@@ -1,4 +1,4 @@
-* lips
+# lips
 
 An assembler for the MIPS R4300i architecture, written in Lua.
 
