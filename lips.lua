@@ -977,6 +977,7 @@ function Parser:tokenize()
             t.tt = 'NUM'
             t.tok = self.defines[t.tok]
             if t.tok == nil then
+                self.line = t.line
                 self:error('undefined define') -- uhhh nice wording
             end
         end
