@@ -2,18 +2,30 @@
 
 An assembler for the MIPS R4300i architecture, written in Lua.
 
-Not for production. Much of the code is untested and likely to change.
+Not for production. Much of the code and syntax is untested and likely to change.
 Even this README is incomplete.
 
 ## Syntax
 
-TODO
+(TODO)
+
+A derivative of [CajeASM's][caje] syntax.
+
+[caje]: https://github.com/Tarek701/CajeASM/
 
 ## Instructions
 
-[refer to these instruction documents.][instrdocs]
+Instructions were primarily referenced from [the N64 Toolkit: Opcodes.][n64op]
 
-[instrdocs]: https://github.com/mikeryan/n64dev/tree/master/docs/n64ops
+A more in-depth look at instructions for MIPS IV processors in general
+is given by [the MIPS IV Instruction Set manual.][mipsiv]
+
+There's also a brief and incomplete [overview of MIPS instructions.][overview]
+First-time writers of MIPS assembly may find this the most useful.
+
+[n64op]: https://github.com/mikeryan/n64dev/tree/master/docs/n64ops
+[mipsiv]: http://www.cs.cmu.edu/afs/cs/academic/class/15740-f97/public/doc/mips-isa.pdf
+[overview]: http://www.mrc.uidaho.edu/mrc/people/jff/digital/MIPSir.html
 
 ### Unimplemented
 
@@ -77,7 +89,7 @@ In order of numerical value, with intended usage:
 * REG#: whereas # is a decimal number from 0 to 31.
 aliased to the appropriate register. eg: REG0 is R0, REG1 is at, REG2 is V0.
 
-* f#: coproccesor 1 registers, whereas # is a decimal number from 0 to 31.
+* F#: coproccesor 1 registers, whereas # is a decimal number from 0 to 31.
 
 ### Unimplemented
 
