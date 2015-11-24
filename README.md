@@ -108,24 +108,33 @@ TagLo,     TagHi,     ErrorEPC,     RESERVED
 
 ## Directives
 
-* BYTE: writes a list of 8-bit numbers until end-of-line.
+* `.byte {numbers...}`  
+writes a series of 8-bit numbers until end-of-line.
 be wary of potential alignment issues.
 
-* HALFWORD: writes a list of 16-bit numbers until end-of-line.
+* `.halfword {numbers...}`  
+writes a series of 16-bit numbers until end-of-line.
 be wary of potential alignment issues.
 
-* WORD: writes a list of 32-bit numbers until end-of-line.
+* `.word {numbers...}`  
+writes a series of 32-bit numbers until end-of-line.
 
-* SKIP: takes one or two arguments.
+* `.align [n] [fill]`  
+aligns the next datum to a `n*2` boundary using `fill` for spacing.
+if `n` is not given, 2 is implied.
+if `fill` is not given, 0 is implied.
 
-* ORG: change the current address for writing to; seeking.
-for now, this is untested and likely to cause performance issues.
+* `.skip {n} [fill]`  
+skips the next `n` bytes using `fill` for spacing.
+if `fill` is not given, no bytes are overwritten,
+and only the position is changed.
+
+* `.org {address}`  
+set the current address for writing to; seek.
+until lips is a little more optimized,
+be cautious of seeking to large addresses.
 
 ### Unimplemented
-
-* ALIGN: takes one or two arguments.
-unlike some other assemblers,
-ALIGN only affects the first immediately following datum.
 
 * FLOAT: writes a list of 32-bit floating point numbers until end-of-line.
 this may not get implemented due to a lack of aliasing in vanilla Lua,

@@ -1,8 +1,5 @@
 -- lips.lua
 
--- instructions: https://github.com/mikeryan/n64dev/tree/master/docs/n64ops
--- lexer and parser are somewhat based on http://chunkbake.luaforge.net/
-
 local assembler = {
     _DESCRIPTION = 'Assembles MIPS assembly files for the R4300i CPU.',
     _URL = 'https://github.com/notwa/lips/',
@@ -132,6 +129,7 @@ local instructions = {
         o:  offset
         b:  base
         i:  immediate (infmt 'i', 'j', 'J', and 'k' all write to here)
+        I:  index
         C:  constant (given in argument immediately after)
         F:  format constant (given in argument after constant)
     --]]
@@ -751,14 +749,18 @@ function Parser:directive()
     if name == 'ORG' then
         self.dumper:add_directive(name, self:number())
     elseif name == 'ALIGN' or name == 'SKIP' then
-        local size = self:number()
-        if self:is_EOL() then
-            self.dumper:add_directive(name, size)
+        if self:is_EOL() and name == 'ALIGN' then
+            self.dumper:add_directive(name, 0)
         else
-            self:optional_comma()
-            self.dumper:add_directive(name, size, self:number())
+            local size = self:number()
+            if self:is_EOL() then
+                self.dumper:add_directive(name, size)
+            else
+                self:optional_comma()
+                self.dumper:add_directive(name, size, self:number())
+            end
+            self:expect_EOL()
         end
-        self:expect_EOL()
     elseif name == 'BYTE' or name == 'HALFWORD' or name == 'WORD' then
         self.dumper:add_directive(name, self:number())
         while not self:is_EOL() do
@@ -1128,12 +1130,18 @@ function Dumper:add_directive(name, a, b)
         self.pos = a % 0x80000000
         self:advance(0)
     elseif name == 'ALIGN' then
-        t.kind = 'align'
-        t.align = a
-        t.fill = b
+        t.kind = 'ahead'
+        local align = a*2
+        if align == 0 then
+            align = 4
+        elseif align < 0 then
+            self:error('negative alignment')
+        end
+        local temp = self.pos + align - 1
+        t.skip = temp - (temp % align) - self.pos
+        t.fill = t.fill or 0
         table.insert(self.commands, t)
-        --self.size = size.size + ???
-        self:error('align directive is unimplemented')
+        self:advance(t.skip)
     elseif name == 'SKIP' then
         t.kind = 'ahead'
         t.skip = a
@@ -1273,14 +1281,10 @@ function Dumper:dump()
             self:write(t)
         elseif t.kind == 'goto' then
             self.pos = t.addr
-        elseif t.kind == 'align' then
-            -- TODO: align next instruction to 2*n boundary
-            -- note: traditionally, alignment keeps until .align 0 is given
-            self:error('align directive is unimplemented')
         elseif t.kind == 'ahead' then
             if t.fill then
                 for i=1, t.skip do
-                    self:write{self.fill}
+                    self:write{t.fill}
                 end
             else
                 self.pos = self.pos + t.skip
