@@ -266,8 +266,8 @@ local instructions = {
     DMFC1   = {17, 'tS', 'CtS00', 1},
     DMTC1   = {17, 'tS', 'CtS00', 5},
     MFC0    = {16, 'tS', 'CtS00', 0},
-    MFC1    = {16, 'tS', 'CtS00', 0},
-    MTC0    = {17, 'tS', 'CtS00', 4},
+    MFC1    = {17, 'tS', 'CtS00', 0},
+    MTC0    = {16, 'tS', 'CtS00', 4},
     MTC1    = {17, 'tS', 'CtS00', 4},
 
     LDC1    = {53, 'Tob', 'bTo'},
@@ -361,10 +361,6 @@ local instructions = {
     BC1FL   = {},
     BC1T    = {},
     BC1TL   = {},
-
-    -- are these undocumented?
-    LDC2    = {},
-    SDC2    = {},
 
     -- pseudo-instructions
     B       = {4, 'r', '00o'},
