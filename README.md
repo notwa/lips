@@ -34,7 +34,7 @@ Whether or not they output the proper machine code is another thing.
 
 ### Unimplemented Pseudo-Instructions
 
-Besides implied arguments for existing instructions, there are:
+Besides implicit arguments for existing instructions, there are:
 
 * ABS, MUL, DIV, REM
 

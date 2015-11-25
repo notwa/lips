@@ -946,6 +946,14 @@ function Parser:instruction()
             args.immediate = {'LOWER', im}
             self:format_out(addi[3], addi[1], args, addi[4], addi[5])
         end
+    elseif name == 'JR' then
+        local args = {}
+        if self:is_EOL() then
+            args.rs = 'RA'
+        else
+            args.rs = self:register()
+        end
+        self:format_out(h[3], h[1], args, h[4], h[5])
     elseif h[2] == 'tob' then -- or h[2] == 'Tob' then
         local lui = instructions['LUI']
         local args = {}
