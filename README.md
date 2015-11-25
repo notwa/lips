@@ -29,12 +29,6 @@ First-time writers of MIPS assembly may find this the most useful.
 
 ### Unimplemented
 
-* CACHE
-
-* ERET
-
-* TLBP, TLBR, TLBWI, TLBWR
-
 * BC1F, BC1FL, BC1T, BC1TL
 
 ### Unimplemented Pseudo-Instructions
