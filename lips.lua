@@ -108,9 +108,9 @@ local instructions = {
         D:  floating point register for fd
         S:  floating point register for fs
         T:  floating point register for ft
-        o:  constant for offset (uses lower halfword)
+        o:  constant for offset
         b:  register to dereference for base
-        r:  relative constant or label (uses lower halfword)
+        r:  relative constant or label for offset
         i:  immediate (must fit in a halfword)
         I:  constant or label for index (long jump)
         j:  (unused) immediate (uses lower halfword)
@@ -349,14 +349,21 @@ local instructions = {
     TLTIU   = {1, 'si', 'sCi', 11},
     TNEI    = {1, 'si', 'sCi', 14},
 
-    CACHE   = {},
-    ERET    = {},
+    -- immediate limited to 3 bits?
+    CACHE   = {47, 'iob', 'bio'},
 
-    TLBP    = {},
-    TLBR    = {},
-    TLBWI   = {},
-    TLBWR   = {},
+    -- misuses 'F' to write the initial bit
+    ERET    = {16, '', 'F000C', 24, 16},
+    TLBP    = {16, '', 'F000C',  8, 16},
+    TLBR    = {16, '', 'F000C',  1, 16},
+    TLBWI   = {16, '', 'F000C',  2, 16},
+    TLBWR   = {16, '', 'F000C',  6, 16},
 
+    -- 'c' is unimplemented
+    --BC1F    = {17, 'co', 'Cco', 8, 0},
+    --BC1FL   = {17, 'co', 'Cco', 8, 2},
+    --BC1T    = {17, 'co', 'Cco', 8, 1},
+    --BC1TL   = {17, 'co', 'Cco', 8, 3},
     BC1F    = {},
     BC1FL   = {},
     BC1T    = {},
