@@ -1334,7 +1334,7 @@ local function assemble(fn_or_asm, writer, options)
         return parser:parse(asm)
     end
 
-    if options.unsafe then
+    if options and options.unsafe then
         return main()
     else
         local ok, err = pcall(main)
