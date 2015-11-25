@@ -113,8 +113,8 @@ local instructions = {
         r:  relative constant or label (uses lower halfword)
         i:  immediate (must fit in a halfword)
         I:  constant or label for index (long jump)
-        j:  immediate (uses lower halfword)
-        J:  immediate (uses upper halfword)
+        j:  (unused) immediate (uses lower halfword)
+        J:  (unused) immediate (uses upper halfword)
         k:  immediate to negate (must fit in a halfword)
 
     output format guide:
@@ -177,15 +177,15 @@ local instructions = {
     MFHI    = {0, 'd', '00d0C', 16},
     MFLO    = {0, 'd', '00d0C', 18},
 
-    ADDI    = { 8, 'tsj', 'sti'},
-    ADDIU   = { 9, 'tsj', 'sti'},
-    ANDI    = {12, 'tsj', 'sti'},
-    DADDI   = {24, 'tsj', 'sti'},
-    DADDIU  = {25, 'tsj', 'sti'},
-    ORI     = {13, 'tsj', 'sti'},
-    SLTI    = {10, 'tsj', 'sti'},
-    SLTIU   = {11, 'tsj', 'sti'},
-    XORI    = {14, 'tsj', 'sti'},
+    ADDI    = { 8, 'tsi', 'sti'},
+    ADDIU   = { 9, 'tsi', 'sti'},
+    ANDI    = {12, 'tsi', 'sti'},
+    DADDI   = {24, 'tsi', 'sti'},
+    DADDIU  = {25, 'tsi', 'sti'},
+    ORI     = {13, 'tsi', 'sti'},
+    SLTI    = {10, 'tsi', 'sti'},
+    SLTIU   = {11, 'tsi', 'sti'},
+    XORI    = {14, 'tsi', 'sti'},
 
     ADD     = {0, 'dst', 'std0C', 32},
     ADDU    = {0, 'dst', 'std0C', 33},
@@ -342,12 +342,12 @@ local instructions = {
     TRUNC_L_S={17, 'DS', 'F0SDC',  9, fmt_single},
     TRUNC_W_D={17, 'DS', 'F0SDC', 13, fmt_double},
 
-    TEQI    = {1, 'sj', 'sCi', 12},
-    TGEI    = {1, 'sj', 'sCi',  8},
-    TGEIU   = {1, 'sj', 'sCi',  9},
-    TLTI    = {1, 'sj', 'sCi', 10},
-    TLTIU   = {1, 'sj', 'sCi', 11},
-    TNEI    = {1, 'sj', 'sCi', 14},
+    TEQI    = {1, 'si', 'sCi', 12},
+    TGEI    = {1, 'si', 'sCi',  8},
+    TGEIU   = {1, 'si', 'sCi',  9},
+    TLTI    = {1, 'si', 'sCi', 10},
+    TLTIU   = {1, 'si', 'sCi', 11},
+    TNEI    = {1, 'si', 'sCi', 14},
 
     CACHE   = {},
     ERET    = {},
