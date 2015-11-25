@@ -339,8 +339,10 @@ local instructions = {
     ROUND_W_S={17, 'DS', 'F0SDC', 12, fmt_single},
     SQRT_D  = {17, 'DS', 'F0SDC',  4, fmt_double},
     SQRT_S  = {17, 'DS', 'F0SDC',  4, fmt_single},
+    TRUNC_L_D={17, 'DS', 'F0SDC',  9, fmt_double},
     TRUNC_L_S={17, 'DS', 'F0SDC',  9, fmt_single},
     TRUNC_W_D={17, 'DS', 'F0SDC', 13, fmt_double},
+    TRUNC_W_S={17, 'DS', 'F0SDC', 13, fmt_double},
 
     TEQI    = {1, 'si', 'sCi', 12},
     TGEI    = {1, 'si', 'sCi',  8},
@@ -359,15 +361,11 @@ local instructions = {
     TLBWI   = {16, '', 'F000C',  2, 16},
     TLBWR   = {16, '', 'F000C',  6, 16},
 
-    -- 'c' is unimplemented
-    --BC1F    = {17, 'co', 'Cco', 8, 0},
-    --BC1FL   = {17, 'co', 'Cco', 8, 2},
-    --BC1T    = {17, 'co', 'Cco', 8, 1},
-    --BC1TL   = {17, 'co', 'Cco', 8, 3},
-    BC1F    = {},
-    BC1FL   = {},
-    BC1T    = {},
-    BC1TL   = {},
+    -- only one condition code on the R4300i?
+    BC1F    = {17, 'r', 'FCo', 0, 8},
+    BC1FL   = {17, 'r', 'FCo', 2, 8},
+    BC1T    = {17, 'r', 'FCo', 1, 8},
+    BC1TL   = {17, 'r', 'FCo', 3, 8},
 
     -- pseudo-instructions
     B       = {4, 'r', '00o'},
@@ -377,7 +375,7 @@ local instructions = {
     MOVE    = {0, 'dt', '0td0C', 32},
     NEG     = {0, 'ds', 's0d0C', 34},
     NOP     = {0, '', '0'},
-    NOR     = {0, 'dst', 's0d0C', 39},
+    NOT     = {0, 'ds', 's0d0C', 39},
     SUBI    = {8, 'tsk', 'sti'},
     SUBIU   = {9, 'tsk', 'sti'},
 

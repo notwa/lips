@@ -29,7 +29,8 @@ First-time writers of MIPS assembly may find this the most useful.
 
 ### Unimplemented
 
-* BC1F, BC1FL, BC1T, BC1TL
+As far as I know, all native R4300i instructions have been implemented.
+Whether or not they output the proper machine code is another thing.
 
 ### Unimplemented Pseudo-Instructions
 
