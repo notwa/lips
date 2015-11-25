@@ -917,19 +917,24 @@ function Parser:instruction()
         args.rt = self:register()
         self:optional_comma()
         local im = self:const()
+
         local is_label = im[1] == 'LABELSYM'
+        -- this is really just semantics as far as i can tell
         if h == 'LI' and is_label then
             self:error('use LA for labels')
         end
         if h == 'LA' and not is_label then
             self:error('use LI for immediates')
         end
-        if h == 'LA' or im[2] >= 0x10000 then
+
+        if im[2] >= 0x10000 then
             args.rs = args.rt
             args.immediate = {'UPPER', im}
             self:format_out(lui[3], lui[1], args, lui[4], lui[5])
-            args.immediate = {'LOWER', im}
-            self:format_out(ori[3], ori[1], args, ori[4], ori[5])
+            if im[2] % 0x10000 ~= 0 then
+                args.immediate = {'LOWER', im}
+                self:format_out(ori[3], ori[1], args, ori[4], ori[5])
+            end
         else
             args.rs = 'R0'
             args.immediate = {'LOWER', im}
