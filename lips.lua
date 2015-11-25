@@ -742,27 +742,28 @@ end
 function Parser:directive()
     local name = self.tok
     self:advance()
+    local line = self.line
     if name == 'ORG' then
-        self.dumper:add_directive(name, self:number())
+        self.dumper:add_directive(line, name, self:number())
     elseif name == 'ALIGN' or name == 'SKIP' then
         if self:is_EOL() and name == 'ALIGN' then
-            self.dumper:add_directive(name, 0)
+            self.dumper:add_directive(line, name, 0)
         else
             local size = self:number()
             if self:is_EOL() then
-                self.dumper:add_directive(name, size)
+                self.dumper:add_directive(line, name, size)
             else
                 self:optional_comma()
-                self.dumper:add_directive(name, size, self:number())
+                self.dumper:add_directive(line, name, size, self:number())
             end
             self:expect_EOL()
         end
     elseif name == 'BYTE' or name == 'HALFWORD' or name == 'WORD' then
-        self.dumper:add_directive(name, self:number())
+        self.dumper:add_directive(line, name, self:number())
         while not self:is_EOL() do
             self:advance()
             self:optional_comma()
-            self.dumper:add_directive(name, self:number())
+            self.dumper:add_directive(line, name, self:number())
         end
         self:expect_EOL()
     elseif name == 'HEX' then
@@ -899,7 +900,7 @@ function Parser:format_out(outformat, first, args, const, formatconst)
     if f == nil then
         error('Internal Error: invalid output formatting string', 1)
     end
-    f(self.dumper, first, out[1], out[2], out[3], out[4], out[5])
+    f(self.dumper, self.line, first, out[1], out[2], out[3], out[4], out[5])
 end
 
 function Parser:instruction()
@@ -1055,8 +1056,8 @@ function Parser:parse(asm)
 end
 
 function Dumper:error(msg)
-    -- TOOD: we should pass line numbers down to add_instruction.
-    error(string.format('%s:%d: Dumper Error: %s', '(code)', self.pos, msg), 2)
+    --error(string.format('%s:%d: Dumper Error: %s', '(code)', self.pos, msg), 2)
+    error(string.format('%s:%d: Error: %s', self.fn, self.line, msg), 2)
 end
 
 function Dumper:advance(by)
@@ -1072,23 +1073,24 @@ function Dumper:push_instruction(t)
     self:advance(4)
 end
 
-function Dumper:add_instruction_j(o, T)
-    self:push_instruction{o, T}
+function Dumper:add_instruction_j(line, o, T)
+    self:push_instruction{line=line, o, T}
 end
 
-function Dumper:add_instruction_i(o, s, t, i)
-    self:push_instruction{o, s, t, i}
+function Dumper:add_instruction_i(line, o, s, t, i)
+    self:push_instruction{line=line, o, s, t, i}
 end
 
-function Dumper:add_instruction_r(o, s, t, d, f, c)
-    self:push_instruction{o, s, t, d, f, c}
+function Dumper:add_instruction_r(line, o, s, t, d, f, c)
+    self:push_instruction{line=line, o, s, t, d, f, c}
 end
 
 function Dumper:add_label(name)
     self.labels[name] = self.pos
 end
 
-function Dumper:add_bytes(bs)
+function Dumper:add_bytes(line, ...)
+    local bs = {...}
     local t
     local use_last = self.lastcommand and self.lastcommand.kind == 'bytes'
     if use_last then
@@ -1098,6 +1100,7 @@ function Dumper:add_bytes(bs)
         t.kind = 'bytes'
         t.size = 0
     end
+    t.line = line
     for _, b in ipairs(bs) do
         t.size = t.size + 1
         t[t.size] = b
@@ -1108,22 +1111,23 @@ function Dumper:add_bytes(bs)
     self:advance(t.size)
 end
 
-function Dumper:add_directive(name, a, b)
+function Dumper:add_directive(line, name, a, b)
     -- ORG ALIGN SKIP BYTE HALFWORD WORD
     local t = {}
+    t.line = line
     if name == 'BYTE' then
-        self:add_bytes{a % 0x100}
+        self:add_bytes(line, a % 0x100)
     elseif name == 'HALFWORD' then
         local b0 = a % 0x100
         local b1 = math.floor(a/0x100) % 0x100
-        self:add_bytes{b1, b0}
+        self:add_bytes(line, b1, b0)
     elseif name == 'WORD' then
         -- TODO: ensure lua numbers being floats doesn't cause accuracy issues
         local b0 = a % 0x100
         local b1 = math.floor(a/0x100) % 0x100
         local b2 = math.floor(a/0x10000) % 0x100
         local b3 = math.floor(a/0x1000000) % 0x100
-        self:add_bytes{b3, b2, b1, b0}
+        self:add_bytes(line, b3, b2, b1, b0)
     elseif name == 'ORG' then
         t.kind = 'goto'
         t.addr = a
@@ -1271,6 +1275,10 @@ function Dumper:dump()
     end
 
     for i, t in ipairs(self.commands) do
+        if t.line == nil then
+            error('Internal Error: no line number available')
+        end
+        self.line = t.line
         if t.kind == 'instruction' then
             uw, lw = self:dump_instruction(t)
             local b0 = lw % 0x100
