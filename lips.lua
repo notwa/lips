@@ -933,12 +933,14 @@ function Parser:instruction()
             self:error('use LI for immediates')
         end
 
-        im[2] = im[2] % 0x100000000
-        if im[2] >= 0x8000 and im[2] <= 0xFFFF8000 then
+        if not is_label then
+            im[2] = im[2] % 0x100000000
+        end
+        if is_label or (im[2] >= 0x8000 and im[2] <= 0xFFFF8000) then
             args.rs = args.rt
             args.immediate = {'UPPER', im}
             self:format_out(lui[3], lui[1], args, lui[4], lui[5])
-            if im[2] % 0x10000 ~= 0 then
+            if is_label or im[2] % 0x10000 ~= 0 then
                 args.immediate = {'LOWER', im}
                 self:format_out(ori[3], ori[1], args, ori[4], ori[5])
             end
