@@ -368,16 +368,16 @@ local instructions = {
     BC1TL   = {17, 'r', 'FCo', 3, 8},
 
     -- pseudo-instructions
-    B       = {4, 'r', '00o'},
-    BAL     = {1, 'r', '0Co', 17},
-    CL      = {0, 'd', '00d0C', 32},
-    MOV     = {0, 'dt', '0td0C', 32},
-    MOVE    = {0, 'dt', '0td0C', 32},
-    NEG     = {0, 'ds', 's0d0C', 34},
-    NOP     = {0, '', '0'},
-    NOT     = {0, 'ds', 's0d0C', 39},
-    SUBI    = {8, 'tsk', 'sti'},
-    SUBIU   = {9, 'tsk', 'sti'},
+    B       = {4, 'r', '00o'},          -- BEQ R0, R0, offset
+    BAL     = {1, 'r', '0Co', 17},      -- BGEZAL R0, offset
+    CL      = {0, 'd', '00d0C', 32},    -- ADD RD, R0, R0
+    MOV     = {0, 'dt', '0td0C', 32},   -- ADD RD, R0, RT
+    MOVE    = {0, 'dt', '0td0C', 32},   -- ADD RD, R0, RT
+    NEG     = {0, 'dt', '0td0C', 34},   -- SUB RD, R0, RT
+    NOP     = {0, '', '0'},             -- SLL R0, R0, 0
+    NOT     = {0, 'ds', 's0d0C', 39},   -- NOR RD, RS, R0
+    SUBI    = {8, 'tsk', 'sti'},        -- ADDI RT, RS, -immediate
+    SUBIU   = {9, 'tsk', 'sti'},        -- ADDIU RT, RS, -immediate
 
     -- ...that expand to multiple instructions
     LI      = 'LI', -- only one instruction for values < 0x10000
@@ -388,11 +388,11 @@ local instructions = {
     --DIV     = {}, -- 3 arguments
     REM     = {}, -- 3 arguments
 
-    NAND    = {},
-    NANDI   = {},
-    NORI    = {},
-    ROL     = {},
-    ROR     = {},
+    NAND    = 'NAND', -- AND, NOT
+    NANDI   = 'NANDI', -- ANDI, NOT
+    NORI    = 'NORI', -- ORI, NOT
+    ROL     = 'ROL', -- SLL, SRL, OR
+    ROR     = 'ROR', -- SRL, SLL, OR
 
     SEQ     = {},
     SEQI    = {},
@@ -917,8 +917,8 @@ function Parser:instruction()
         self:error('undefined instruction')
     elseif h == 'LI' or h == 'LA' then
         local lui = instructions['LUI']
-        local addi = instructions['ADDI']
         local ori = instructions['ORI']
+        local addiu = instructions['ADDIU']
         local args = {}
         args.rt = self:register()
         self:optional_comma()
@@ -933,7 +933,8 @@ function Parser:instruction()
             self:error('use LI for immediates')
         end
 
-        if im[2] >= 0x10000 then
+        im[2] = im[2] % 0x100000000
+        if im[2] >= 0x8000 and im[2] <= 0xFFFF8000 then
             args.rs = args.rt
             args.immediate = {'UPPER', im}
             self:format_out(lui[3], lui[1], args, lui[4], lui[5])
@@ -944,8 +945,99 @@ function Parser:instruction()
         else
             args.rs = 'R0'
             args.immediate = {'LOWER', im}
-            self:format_out(addi[3], addi[1], args, addi[4], addi[5])
+            self:format_out(addiu[3], addiu[1], args, addiu[4], addiu[5])
         end
+    elseif h == 'NAND' then
+        local and_ = instructions['AND']
+        local nor = instructions['NOR']
+        local args = {}
+        args.rd = self:register()
+        self:optional_comma()
+        args.rs = self:register()
+        self:optional_comma()
+        args.rt = self:register()
+        self:format_out(and_[3], and_[1], args, and_[4], and_[5])
+        args.rs = args.rd
+        args.rt = 'R0'
+        self:format_out(nor[3], nor[1], args, nor[4], nor[5])
+    elseif h == 'NANDI' then
+        local andi = instructions['ANDI']
+        local nor = instructions['NOR']
+        local args = {}
+        args.rt = self:register()
+        self:optional_comma()
+        args.rs = self:register()
+        self:optional_comma()
+        args.immediate = self:const()
+        self:format_out(andi[3], andi[1], args, andi[4], andi[5])
+        args.rd = args.rt
+        args.rs = args.rt
+        args.rt = 'R0'
+        self:format_out(nor[3], nor[1], args, nor[4], nor[5])
+    elseif h == 'NORI' then
+        local ori = instructions['ORI']
+        local nor = instructions['NOR']
+        local args = {}
+        args.rt = self:register()
+        self:optional_comma()
+        args.rs = self:register()
+        self:optional_comma()
+        args.immediate = self:const()
+        self:format_out(ori[3], ori[1], args, ori[4], ori[5])
+        args.rd = args.rt
+        args.rs = args.rt
+        args.rt = 'R0'
+        self:format_out(nor[3], nor[1], args, nor[4], nor[5])
+    elseif h == 'ROL' then
+        local sll = instructions['SLL']
+        local srl = instructions['SRL']
+        local or_ = instructions['OR']
+        local args = {}
+        local left = self:register()
+        self:optional_comma()
+        args.rt = self:register()
+        self:optional_comma()
+        args.immediate = self:const()
+        args.rd = left
+        if args.rd == 'AT' or args.rt == 'AT' then
+            self:error('registers cannot be AT in a pseudo-instruction that uses AT')
+        end
+        if args.rd == args.rt and args.rd ~= 'R0' then
+            self:error('registers cannot be the same')
+        end
+        self:format_out(sll[3], sll[1], args, sll[4], sll[5])
+        args.rd = 'AT'
+        args.immediate = {'NUM', 32 - args.immediate[2]}
+        self:format_out(srl[3], srl[1], args, srl[4], srl[5])
+        args.rd = left
+        args.rs = left
+        args.rt = 'AT'
+        self:format_out(or_[3], or_[1], args, or_[4], or_[5])
+    elseif h == 'ROR' then
+        local sll = instructions['SLL']
+        local srl = instructions['SRL']
+        local or_ = instructions['OR']
+        local args = {}
+        local right = self:register()
+        self:optional_comma()
+        args.rt = self:register()
+        self:optional_comma()
+        args.immediate = self:const()
+        args.rd = right
+        if args.rt == 'AT' or args.rd == 'AT' then
+            self:error('registers cannot be AT in a pseudo-instruction that uses AT')
+        end
+        if args.rd == args.rt and args.rd ~= 'R0' then
+            self:error('registers cannot be the same')
+        end
+        self:format_out(srl[3], srl[1], args, srl[4], srl[5])
+        args.rd = 'AT'
+        args.immediate = {'NUM', 32 - args.immediate[2]}
+        self:format_out(sll[3], sll[1], args, sll[4], sll[5])
+        args.rd = right
+        args.rs = right
+        args.rt = 'AT'
+        self:format_out(or_[3], or_[1], args, or_[4], or_[5])
     elseif name == 'JR' then
         local args = {}
         if self:is_EOL() then
