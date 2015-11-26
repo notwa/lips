@@ -111,11 +111,9 @@ local instructions = {
         o:  constant for offset
         b:  register to dereference for base
         r:  relative constant or label for offset
-        i:  immediate (must fit in a halfword)
         I:  constant or label for index (long jump)
-        j:  (unused) immediate (uses lower halfword)
-        J:  (unused) immediate (uses upper halfword)
-        k:  immediate to negate (must fit in a halfword)
+        i:  immediate (must fit in a halfword; cannot be a label)
+        k:  immediate to negate (must fit in a halfword; cannot be a label)
 
     output format guide:
         such and such: writes ... at this position
@@ -128,7 +126,7 @@ local instructions = {
         T:  ft
         o:  offset
         b:  base
-        i:  immediate (infmt 'i', 'j', 'J', and 'k' all write to here)
+        i:  immediate (infmt 'i' and 'k' both write to here)
         I:  index
         C:  constant (given in argument immediately after)
         F:  format constant (given in argument after constant)
@@ -809,9 +807,12 @@ function Parser:deref()
     return reg
 end
 
-function Parser:const(relative)
+function Parser:const(relative, no_label)
     if self.tt ~= 'NUM' and self.tt ~= 'LABELSYM' then
         self:error('expected constant')
+    end
+    if no_label and self.tt == 'LABELSYM' then
+        self:error('labels are not allowed here')
     end
     if relative and self.tt == 'LABELSYM' then
         self.tt = 'LABELREL'
@@ -839,17 +840,13 @@ function Parser:format_in(informat)
         elseif c == 'T' and not args.ft then
             args.ft = self:register(fpu_registers)
         elseif c == 'o' and not args.offset then
-            args.offset = {'LOWER', self:const()}
+            args.offset = self:const()
         elseif c == 'r' and not args.offset then
-            args.offset = {'LOWER', self:const('relative')}
+            args.offset = self:const('relative')
         elseif c == 'i' and not args.immediate then
-            args.immediate = self:const()
+            args.immediate = self:const(nil, 'no label')
         elseif c == 'I' and not args.index then
             args.index = {'INDEX', self:const()}
-        elseif c == 'j' and not args.immediate then
-            args.immediate = {'LOWER', self:const()}
-        elseif c == 'J' and not args.immediate then
-            args.immediate = {'UPPER', self:const()}
         elseif c == 'k' and not args.immediate then
             args.immediate = {'NEGATE', self:const()}
         elseif c == 'b' and not args.base then
@@ -857,7 +854,7 @@ function Parser:format_in(informat)
         else
             error('Internal Error: invalid input formatting string', 1)
         end
-        if c2:find('[dstDSToiIjJkr]') then
+        if c2:find('[dstDSTorIik]') then
             self:optional_comma()
         end
     end
@@ -1002,7 +999,7 @@ function Parser:instruction()
         args.immediate = self:const()
         args.rd = left
         if args.rd == 'AT' or args.rt == 'AT' then
-            self:error('registers cannot be AT in a pseudo-instruction that uses AT')
+            self:error('registers cannot be AT in this pseudo-instruction')
         end
         if args.rd == args.rt and args.rd ~= 'R0' then
             self:error('registers cannot be the same')
@@ -1054,23 +1051,18 @@ function Parser:instruction()
         args.rt = self:register()
         self:optional_comma()
         local o = self:const()
-        if o[1] == 'LABELSYM' then
-            self:error('unimplemented: label as an offset')
-        end
+        local is_label = o[1] == 'LABELSYM'
         if self:is_EOL() then
-            local upper = math.floor(o[2]/0x10000)
-            local lower = o[2] % 0x10000
-            if lower >= 0x8000 then
-                -- accommodate for offsets being signed
-                upper = (upper + 1) % 0x10000
-            end
             local lui_args = {}
-            lui_args.immediate = {'NUM', upper}
+            lui_args.immediate = {'UPPEROFF', o}
             lui_args.rt = 'AT'
             self:format_out(lui[3], lui[1], lui_args, lui[4], lui[5])
-            args.offset = {'NUM', lower}
+            args.offset = {'LOWER', o}
             args.base = 'AT'
         else
+            if is_label then
+                self:error('labels cannot be used as offsets')
+            end
             args.offset = o
             self:optional_comma()
             args.base = self:deref()
@@ -1301,6 +1293,15 @@ function Dumper:toval(tok)
         elseif tok[1] == 'LOWER' then
             local val = self:desym(tok[2])
             return val % 0x10000
+        elseif tok[1] == 'UPPEROFF' then
+            local val = self:desym(tok[2])
+            local upper = math.floor(val/0x10000)
+            local lower = val % 0x10000
+            if lower >= 0x8000 then
+                -- accommodate for offsets being signed
+                upper = (upper + 1) % 0x10000
+            end
+            return upper
         elseif tok[1] == 'NEGATE' then
             local val = -self:desym(tok[2])
             return val % 0x10000
