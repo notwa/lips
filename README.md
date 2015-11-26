@@ -38,8 +38,6 @@ Besides implicit arguments for existing instructions, there are:
 
 * ABS, MUL, DIV, REM
 
-* NAND, NANDI, NORI, ROL, ROR
-
 * SEQ, SEQI, SEQIU, SEQU
 
 * SGE, SGEI, SGEIU, SGEU
