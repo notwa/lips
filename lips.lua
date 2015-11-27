@@ -589,13 +589,14 @@ function Lexer:read_number()
     end
 end
 
-function Lexer:lex()
+function Lexer:lex(yield)
     while true do
         if self.chr == '\n' then
             self:nextc()
-            return 'EOL', '\n'
+            yield('EOL', '\n')
         elseif self.ord == self.EOF then
-            return 'EOF', self.EOF
+            yield('EOF', self.EOF)
+            break
         elseif self.chr == ';' then
             self:skip_to_EOL()
         elseif self.chrchr == '//' then
@@ -606,7 +607,7 @@ function Lexer:lex()
             self:nextc()
         elseif self.chr == ',' then
             self:nextc()
-            return 'SEP', ','
+            yield('SEP', ',')
         elseif self.chr == '[' then
             self.buff = ''
             self:nextc()
@@ -619,7 +620,7 @@ function Lexer:lex()
                 self:error('define requires a colon')
             end
             self:nextc()
-            return 'DEF', self.buff
+            yield('DEF', self.buff)
         elseif self.chr == '(' then
             self.buff = ''
             self:nextc()
@@ -632,7 +633,7 @@ function Lexer:lex()
             if not all_registers[up] then
                 self:error('not a register')
             end
-            return 'DEREF', up
+            yield('DEREF', up)
         elseif self.chr == '.' then
             self.buff = ''
             self:nextc()
@@ -642,36 +643,36 @@ function Lexer:lex()
                 self:error('not a directive')
             end
             if up == 'INC' or up == 'INCASM' or up == 'INCLUDE' then
-                return 'DIR', 'UP'
+                yield('DIR', 'UP')
+            else
+                yield('DIR', up)
             end
-            return 'DIR', up
         elseif self.chr == '@' then
             self.buff = ''
             self:nextc()
             self:read_chars('[%w_]')
-            return 'DEFSYM', self.buff
+            yield('DEFSYM', self.buff)
         elseif self.chr:find('[%a_]') then
             self.buff = ''
             self:read_chars('[%w_.]')
+            local up = self.buff:upper()
             if self.chr == ':' then
                 if self.buff:find('%.') then
                     self:error('labels cannot contain dots')
                 end
                 self:nextc()
-                return 'LABEL', self.buff
-            end
-            local up = self.buff:upper()
-            if up == 'HEX' then
-                return 'DIR', up
+                yield('LABEL', self.buff)
+            elseif up == 'HEX' then
+                yield('DIR', up)
             elseif all_registers[up] then
-                return 'REG', up
+                yield('REG', up)
             elseif all_instructions[up] then
-                return 'INSTR', up:gsub('%.', '_')
+                yield('INSTR', up:gsub('%.', '_'))
             else
                 if self.buff:find('%.') then
                     self:error('labels cannot contain dots')
                 end
-                return 'LABELSYM', self.buff
+                yield('LABELSYM', self.buff)
             end
         elseif self.chr == ']' then
             self:error('unmatched closing bracket')
@@ -681,16 +682,17 @@ function Lexer:lex()
             self:nextc()
             local n = self:read_number()
             if n then
-                return 'NUM', -n
+                yield('NUM', -n)
             else
                 self:error('expected number after minus sign')
             end
         else
             local n = self:read_number()
             if n then
-                return 'NUM', n
+                yield('NUM', n)
+            else
+                self:error('unknown character or control character')
             end
-            self:error('unknown character or control character')
         end
     end
 end
@@ -1078,14 +1080,22 @@ function Parser:instruction()
 end
 
 function Parser:tokenize()
-    local lexer = Lexer(self.asm, self.fn)
-
     self.tokens = {}
     self.i = 0
     local line = 1
+
+    local routine = coroutine.create(function()
+        local lexer = Lexer(self.asm, self.fn)
+        lexer:lex(coroutine.yield)
+    end)
+
     local lex = function()
         local t = {line=line}
-        t.tt, t.tok = lexer:lex()
+        local ok
+        ok, t.tt, t.tok = coroutine.resume(routine)
+        if not ok then
+            error('Internal Error: lexer coroutine has stopped')
+        end
         table.insert(self.tokens, t)
         return t.tt, t.tok
     end
@@ -1124,7 +1134,6 @@ function Parser:tokenize()
             end
         end
     end
-    return t
 end
 
 function Parser:parse(asm)
