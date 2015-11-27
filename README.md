@@ -127,6 +127,17 @@ set the current address for writing to; seek.
 until lips is a little more optimized,
 be cautious of seeking to large addresses.
 
+* `HEX { ... }`  
+write a series of bytes given in hexadecimal.
+all numbers must be given in hex — no prefix is required.
+```
+butts:  HEX {
+    F0 0D
+    DE AD BE EF
+}
+.align
+```
+
 ### Unimplemented
 
 * FLOAT: writes a list of 32-bit floating point numbers until end-of-line.

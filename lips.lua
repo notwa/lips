@@ -549,7 +549,7 @@ function Lexer:lex_block_comment(yield)
             self:nextc()
             yield('EOL', '\n')
         elseif self.ord == self.EOF then
-            self:error('incomplete block comment')
+            self:error('unexpected EOF; incomplete block comment')
         elseif self.chrchr == '*/' then
             self:nextc()
             self:nextc()
@@ -581,6 +581,60 @@ function Lexer:read_number()
     elseif self.chr == '#' then
         self:nextc()
         return self:read_decimal()
+    end
+end
+
+function Lexer:lex_hex(yield)
+    local hexmatch = '[0-9A-Fa-f]'
+    local entered = false
+    while true do
+        if self.chr == '\n' then
+            self:nextc()
+            yield('EOL', '\n')
+        elseif self.ord == self.EOF then
+            self:error('unexpected EOF; incomplete hex directive')
+        elseif self.chr == ';' then
+            self:skip_to_EOL()
+        elseif self.chrchr == '//' then
+            self:skip_to_EOL()
+        elseif self.chrchr == '/*' then
+            self:nextc()
+            self:nextc()
+            self:lex_block_comment(yield)
+        elseif self.chr:find('%s') then
+            self:nextc()
+        elseif self.chr == '{' then
+            if entered then
+                self:error('unexpected opening brace')
+            end
+            self:nextc()
+            entered = true
+        elseif self.chr == '}' then
+            if not entered then
+                self:error('expected opening brace')
+            end
+            self:nextc()
+            break
+        elseif self.chr == ',' then
+            self:error('commas are not allowed in HEX directives')
+        elseif self.chr:find(hexmatch) and self.chr2:find(hexmatch) then
+            local num = tonumber(self.chrchr, 16)
+            self:nextc()
+            self:nextc()
+            if self.chr:find(hexmatch) then
+                self:error('too many hex digits to be a single byte')
+            end
+            yield('DIR', 'BYTE')
+            yield('NUM', num)
+        elseif self.chr:find(hexmatch) then
+            self:error('expected two hex digits to make a byte')
+        else
+            if entered then
+                self:error('expected bytes given in hex or closing brace')
+            else
+                self:error('expected opening brace')
+            end
+        end
     end
 end
 
@@ -637,7 +691,7 @@ function Lexer:lex(yield)
                 self:error('not a directive')
             end
             if up == 'INC' or up == 'INCASM' or up == 'INCLUDE' then
-                yield('DIR', 'UP')
+                yield('DIR', 'INC')
             else
                 yield('DIR', up)
             end
@@ -655,7 +709,7 @@ function Lexer:lex(yield)
                 self:nextc()
                 yield('LABEL', buff)
             elseif up == 'HEX' then
-                yield('DIR', up)
+                self:lex_hex(yield)
             elseif all_registers[up] then
                 yield('REG', up)
             elseif all_instructions[up] then
@@ -1083,11 +1137,13 @@ function Parser:tokenize()
 
     local lex = function()
         local t = {line=line}
-        local ok
-        ok, t.tt, t.tok = coroutine.resume(routine)
+        local ok, a, b = coroutine.resume(routine)
         if not ok then
-            error('Internal Error: lexer coroutine has stopped')
+            a = a or 'Internal Error: lexer coroutine has stopped'
+            error(a)
         end
+        t.tt = a
+        t.tok = b
         table.insert(self.tokens, t)
         return t.tt, t.tok
     end
