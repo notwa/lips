@@ -470,7 +470,9 @@ end
 function Lexer:nextc()
     if self.pos > #self.asm then
         self.ord = self.EOF
+        self.ord2 = self.EOF
         self.chr = ''
+        self.chr2 = ''
         self.chrchr = ''
         return
     end
@@ -496,6 +498,8 @@ function Lexer:nextc()
         self.chr2 = string.char(self.ord2)
         self.chrchr = string.char(self.ord, self.ord2)
     else
+        self.ord2 = self.EOF
+        self.chr2 = ''
         self.chrchr = self.chr
     end
 end
