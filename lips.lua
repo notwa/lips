@@ -543,11 +543,12 @@ function Lexer:read_binary()
     return num
 end
 
-function Lexer:skip_block_comment()
-    self:nextc()
-    self:nextc()
+function Lexer:lex_block_comment(yield)
     while true do
-        if self.ord == self.EOF then
+        if self.chr == '\n' then
+            self:nextc()
+            yield('EOL', '\n')
+        elseif self.ord == self.EOF then
             self:error('incomplete block comment')
         elseif self.chrchr == '*/' then
             self:nextc()
@@ -596,7 +597,9 @@ function Lexer:lex(yield)
         elseif self.chrchr == '//' then
             self:skip_to_EOL()
         elseif self.chrchr == '/*' then
-            self:skip_block_comment()
+            self:nextc()
+            self:nextc()
+            self:lex_block_comment(yield)
         elseif self.chr:find('%s') then
             self:nextc()
         elseif self.chr == ',' then
