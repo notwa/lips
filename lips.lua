@@ -1477,12 +1477,13 @@ function Dumper:dump()
     end
 end
 
-local function assemble(fn_or_asm, writer, options)
+function assembler.assemble(fn_or_asm, writer, options)
     -- assemble MIPS R4300i assembly code.
     -- if fn_or_asm contains a newline; treat as assembly, otherwise load file.
     -- returns error message on error, or nil on success.
     fn_or_asm = tostring(fn_or_asm)
     writer = writer or io.write
+    options = options or {}
 
     function main()
         local fn = nil
@@ -1503,7 +1504,7 @@ local function assemble(fn_or_asm, writer, options)
         return parser:parse(asm)
     end
 
-    if options and options.unsafe then
+    if options.unsafe then
         return main()
     else
         local ok, err = pcall(main)
@@ -1512,18 +1513,7 @@ local function assemble(fn_or_asm, writer, options)
 end
 
 return setmetatable(assembler, {
-    __call = function(_, ...)
-        return assemble(...)
+    __call = function(self, ...)
+        return self.assemble(...)
     end,
-
-    Lexer = Lexer,
-    Parser = Parser,
-    Dumper = Dumper,
-
-    registers = registers,
-    fpu_registers = fpu_registers,
-    all_registers = all_registers,
-    instructions = instructions,
-    all_instructions = all_instructions,
-    all_directives = all_directives,
 })
