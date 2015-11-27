@@ -114,6 +114,7 @@ local instructions = {
         I:  constant or label for index (long jump)
         i:  immediate (must fit in a halfword; cannot be a label)
         k:  immediate to negate (must fit in a halfword; cannot be a label)
+        K:  signed immediate (-0x8000 <= immediate < 0x10000; cannot be a label)
 
     output format guide:
         such and such: writes ... at this position
@@ -175,11 +176,11 @@ local instructions = {
     MFHI    = {0, 'd', '00d0C', 16},
     MFLO    = {0, 'd', '00d0C', 18},
 
-    ADDI    = { 8, 'tsi', 'sti'},
-    ADDIU   = { 9, 'tsi', 'sti'},
-    ANDI    = {12, 'tsi', 'sti'},
-    DADDI   = {24, 'tsi', 'sti'},
-    DADDIU  = {25, 'tsi', 'sti'},
+    ADDI    = { 8, 'tsK', 'sti'},
+    ADDIU   = { 9, 'tsK', 'sti'},
+    ANDI    = {12, 'tsK', 'sti'},
+    DADDI   = {24, 'tsK', 'sti'},
+    DADDIU  = {25, 'tsK', 'sti'},
     ORI     = {13, 'tsi', 'sti'},
     SLTI    = {10, 'tsi', 'sti'},
     SLTIU   = {11, 'tsi', 'sti'},
@@ -892,21 +893,23 @@ function Parser:format_in(informat)
         elseif c == 'T' and not args.ft then
             args.ft = self:register(fpu_registers)
         elseif c == 'o' and not args.offset then
-            args.offset = self:const()
+            args.offset = {'SIGNED', self:const()}
         elseif c == 'r' and not args.offset then
-            args.offset = self:const('relative')
+            args.offset = {'SIGNED', self:const('relative')}
         elseif c == 'i' and not args.immediate then
             args.immediate = self:const(nil, 'no label')
         elseif c == 'I' and not args.index then
             args.index = {'INDEX', self:const()}
         elseif c == 'k' and not args.immediate then
-            args.immediate = {'NEGATE', self:const()}
+            args.immediate = {'NEGATE', self:const(nil, 'no label')}
+        elseif c == 'K' and not args.immediate then
+            args.immediate = {'SIGNED', self:const(nil, 'no label')}
         elseif c == 'b' and not args.base then
             args.base = self:deref()
         else
             error('Internal Error: invalid input formatting string', 1)
         end
-        if c2:find('[dstDSTorIik]') then
+        if c2:find('[dstDSTorIikK]') then
             self:optional_comma()
         end
     end
@@ -1115,7 +1118,7 @@ function Parser:instruction()
             if is_label then
                 self:error('labels cannot be used as offsets')
             end
-            args.offset = o
+            args.offset = {'SIGNED', o}
             self:optional_comma()
             args.base = self:deref()
         end
@@ -1331,7 +1334,7 @@ function Dumper:desym(tok)
         if rel > 0x8000 or rel <= -0x8000 then
             self:error('branch too far')
         end
-        return (0x10000 + rel) % 0x10000
+        return rel % 0x10000
     end
     self:error('failed to desym')
 end
@@ -1363,8 +1366,17 @@ function Dumper:toval(tok)
                 upper = (upper + 1) % 0x10000
             end
             return upper
+        elseif tok[1] == 'SIGNED' then
+            local val = self:desym(tok[2])
+            if val >= 0x10000 or val < -0x8000 then
+                self:error('value out of range')
+            end
+            return val % 0x10000
         elseif tok[1] == 'NEGATE' then
             local val = -self:desym(tok[2])
+            if val >= 0x10000 or val < -0x8000 then
+                self:error('value out of range')
+            end
             return val % 0x10000
         elseif tok[1] == 'INDEX' then
             local val = self:desym(tok[2]) % 0x80000000
