@@ -506,45 +506,39 @@ function Lexer:skip_to_EOL()
     end
 end
 
-function Lexer:save_next()
-    self.buff = self.buff..self.chr
-    self:nextc()
-end
-
 function Lexer:read_chars(pattern)
+    local buff = ''
     while string.find(self.chr, pattern) do
-        self:save_next()
+        buff = buff..self.chr
+        self:nextc()
     end
+    return buff
 end
 
 function Lexer:read_decimal()
-    self.buff = ''
-    self:read_chars('%d')
-    local num = tonumber(self.buff)
+    local buff = self:read_chars('%d')
+    local num = tonumber(buff)
     if not num then self:error('invalid decimal number') end
     return num
 end
 
 function Lexer:read_hex()
-    self.buff = ''
-    self:read_chars('%x')
-    local num = tonumber(self.buff, 16)
+    local buff = self:read_chars('%x')
+    local num = tonumber(buff, 16)
     if not num then self:error('invalid hex number') end
     return num
 end
 
 function Lexer:read_octal()
-    self.buff = ''
-    self:read_chars('[0-7]')
-    local num = tonumber(self.buff)
+    local buff = self:read_chars('[0-7]')
+    local num = tonumber(buff)
     if not num then self:error('invalid octal number') end
     return num
 end
 
 function Lexer:read_binary()
-    self.buff = ''
-    self:read_chars('[01]')
-    local num = tonumber(self.buff, 2)
+    local buff = self:read_chars('[01]')
+    local num = tonumber(buff, 2)
     if not num then self:error('invalid binary number') end
     return num
 end
@@ -609,9 +603,8 @@ function Lexer:lex(yield)
             self:nextc()
             yield('SEP', ',')
         elseif self.chr == '[' then
-            self.buff = ''
             self:nextc()
-            self:read_chars('[%w_]')
+            local buff = self:read_chars('[%w_]')
             if self.chr ~= ']' then
                 self:error('invalid define name')
             end
@@ -620,25 +613,23 @@ function Lexer:lex(yield)
                 self:error('define requires a colon')
             end
             self:nextc()
-            yield('DEF', self.buff)
+            yield('DEF', buff)
         elseif self.chr == '(' then
-            self.buff = ''
             self:nextc()
-            self:read_chars('[%w_]')
+            local buff = self:read_chars('[%w_]')
             if self.chr ~= ')' then
                 self:error('invalid register name')
             end
             self:nextc()
-            local up = self.buff:upper()
+            local up = buff:upper()
             if not all_registers[up] then
                 self:error('not a register')
             end
             yield('DEREF', up)
         elseif self.chr == '.' then
-            self.buff = ''
             self:nextc()
-            self:read_chars('[%w]')
-            local up = self.buff:upper()
+            local buff = self:read_chars('[%w]')
+            local up = buff:upper()
             if not all_directives[up] then
                 self:error('not a directive')
             end
@@ -648,20 +639,18 @@ function Lexer:lex(yield)
                 yield('DIR', up)
             end
         elseif self.chr == '@' then
-            self.buff = ''
             self:nextc()
-            self:read_chars('[%w_]')
-            yield('DEFSYM', self.buff)
+            local buff = self:read_chars('[%w_]')
+            yield('DEFSYM', buff)
         elseif self.chr:find('[%a_]') then
-            self.buff = ''
-            self:read_chars('[%w_.]')
-            local up = self.buff:upper()
+            local buff = self:read_chars('[%w_.]')
+            local up = buff:upper()
             if self.chr == ':' then
-                if self.buff:find('%.') then
+                if buff:find('%.') then
                     self:error('labels cannot contain dots')
                 end
                 self:nextc()
-                yield('LABEL', self.buff)
+                yield('LABEL', buff)
             elseif up == 'HEX' then
                 yield('DIR', up)
             elseif all_registers[up] then
@@ -669,10 +658,10 @@ function Lexer:lex(yield)
             elseif all_instructions[up] then
                 yield('INSTR', up:gsub('%.', '_'))
             else
-                if self.buff:find('%.') then
+                if buff:find('%.') then
                     self:error('labels cannot contain dots')
                 end
-                yield('LABELSYM', self.buff)
+                yield('LABELSYM', buff)
             end
         elseif self.chr == ']' then
             self:error('unmatched closing bracket')
