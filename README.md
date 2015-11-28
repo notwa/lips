@@ -5,6 +5,23 @@ An assembler for the MIPS R4300i architecture, written in Lua.
 Not for production. Much of the code and syntax is untested and likely to change.
 Even this README is incomplete.
 
+## Integer Precision
+
+**Please note:** some builds of Lua cannot precisely handle integers
+larger than 24 bits. This can cause errorenous instructions to be assembled.
+LuaJIT and Lua 5.3 shouldn't have this issue by default.
+
+Just to be safe, try running the following script:
+
+```
+local precise = 0x1000000 + 1 ~= 0x1000000
+if precise then
+    print("You're all set!")
+else
+    print("You will have a bad time.")
+end
+```
+
 ## Syntax
 
 (TODO)
