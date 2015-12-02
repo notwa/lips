@@ -2,6 +2,10 @@
 
 An assembler for the MIPS R4300i architecture, written in Lua.
 
+This is not a 'true' assembler; it won't produce executable binary files.
+This was intended to assist in hacking N64 games.
+It does little more than output hex.
+
 Not for production. Much of the code and syntax is untested and likely to change.
 Even this README is incomplete.
 
@@ -37,11 +41,16 @@ Instructions were primarily referenced from [the N64 Toolkit: Opcodes.][n64op]
 A more in-depth look at instructions for MIPS IV processors in general
 is given by [the MIPS IV Instruction Set manual.][mipsiv]
 
+[The MIPS64 Instruction Set manual][mips64] is sometimes useful.
+Much of it doesn't apply to our older MIPS IV architecture,
+but it's a little cleaner than the older manual.
+
 There's also a brief and incomplete [overview of MIPS instructions.][overview]
 First-time writers of MIPS assembly may find this the most useful.
 
 [n64op]: https://github.com/mikeryan/n64dev/tree/master/docs/n64ops
 [mipsiv]: http://www.cs.cmu.edu/afs/cs/academic/class/15740-f97/public/doc/mips-isa.pdf
+[mips64]: http://scc.ustc.edu.cn/zlsc/lxwycj/200910/W020100308600769158777.pdf
 [overview]: http://www.mrc.uidaho.edu/mrc/people/jff/digital/MIPSir.html
 
 ### Unimplemented

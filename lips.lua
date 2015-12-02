@@ -982,7 +982,8 @@ function Parser:instruction()
         local im = self:const()
 
         local is_label = im[1] == 'LABELSYM'
-        -- this is really just semantics as far as i can tell
+        -- for us, this is just semantics. for a "real" assembler,
+        -- LA could add an appropriate RELO directive.
         if h == 'LI' and is_label then
             self:error('use LA for labels')
         end
