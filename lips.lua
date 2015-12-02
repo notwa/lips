@@ -972,7 +972,7 @@ function Parser:instruction()
 
     if h == nil then
         self:error('undefined instruction')
-    elseif h == 'LI' or h == 'LA' then
+    elseif h == 'LI' then
         local lui = instructions['LUI']
         local ori = instructions['ORI']
         local addiu = instructions['ADDIU']
@@ -981,32 +981,47 @@ function Parser:instruction()
         self:optional_comma()
         local im = self:const()
 
-        local is_label = im[1] == 'LABELSYM'
-        -- for us, this is just semantics. for a "real" assembler,
-        -- LA could add an appropriate RELO directive.
-        if h == 'LI' and is_label then
+        if im[1] == 'LABELSYM' then
             self:error('use LA for labels')
         end
-        if h == 'LA' and not is_label then
-            self:error('use LI for immediates')
-        end
 
-        if not is_label then
-            im[2] = im[2] % 0x100000000
-        end
-        if is_label or (im[2] >= 0x8000 and im[2] <= 0xFFFF8000) then
+        im[2] = im[2] % 0x100000000
+        if im[2] >= 0x10000 and im[2] <= 0xFFFF8000 then
             args.rs = args.rt
             args.immediate = {'UPPER', im}
             self:format_out(lui[3], lui[1], args, lui[4], lui[5])
-            if is_label or im[2] % 0x10000 ~= 0 then
+            if im[2] % 0x10000 ~= 0 then
                 args.immediate = {'LOWER', im}
                 self:format_out(ori[3], ori[1], args, ori[4], ori[5])
             end
+        elseif im[2] >= 0x8000 and im[2] < 0x10000 then
+            args.rs = 'R0'
+            args.immediate = {'LOWER', im}
+            self:format_out(ori[3], ori[1], args, ori[4], ori[5])
         else
             args.rs = 'R0'
             args.immediate = {'LOWER', im}
             self:format_out(addiu[3], addiu[1], args, addiu[4], addiu[5])
         end
+    elseif h == 'LA' then
+        local lui = instructions['LUI']
+        local addiu = instructions['ADDIU']
+        args.rt = self:register()
+        self:optional_comma()
+        local im = self:const()
+
+        -- for us, this is just semantics. for a "real" assembler,
+        -- LA could add appropriate RELO LUI/ADDIU directives.
+        -- for that reason, we should always use the respective instructions.
+        if im[1] ~= 'LABELSYM' then
+            self:error('use LI for immediates')
+        end
+
+        args.rs = args.rt
+        args.immediate = {'UPPEROFF', im}
+        self:format_out(lui[3], lui[1], args, lui[4], lui[5])
+        args.immediate = {'LOWER', im}
+        self:format_out(addiu[3], addiu[1], args, addiu[4], addiu[5])
     elseif h == 'NAND' then
         local and_ = instructions['AND']
         local nor = instructions['NOR']
