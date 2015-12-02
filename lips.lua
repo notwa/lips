@@ -414,7 +414,6 @@ local instructions = {
     SNEIU   = {},
     SNEU    = {},
 
-    -- TODO: immediate, unsigned, likely versions?
     BEQI    = {},
     BNEI    = {},
     BGE     = {},
@@ -548,23 +547,6 @@ function Lexer:read_binary()
     return num
 end
 
-function Lexer:lex_block_comment(yield)
-    while true do
-        if self.chr == '\n' then
-            self:nextc()
-            yield('EOL', '\n')
-        elseif self.ord == self.EOF then
-            self:error('unexpected EOF; incomplete block comment')
-        elseif self.chrchr == '*/' then
-            self:nextc()
-            self:nextc()
-            break
-        else
-            self:nextc()
-        end
-    end
-end
-
 function Lexer:read_number()
     if self.chr == '%' then
         self:nextc()
@@ -639,6 +621,23 @@ function Lexer:lex_hex(yield)
             else
                 self:error('expected opening brace')
             end
+        end
+    end
+end
+
+function Lexer:lex_block_comment(yield)
+    while true do
+        if self.chr == '\n' then
+            self:nextc()
+            yield('EOL', '\n')
+        elseif self.ord == self.EOF then
+            self:error('unexpected EOF; incomplete block comment')
+        elseif self.chrchr == '*/' then
+            self:nextc()
+            self:nextc()
+            break
+        else
+            self:nextc()
         end
     end
 end
@@ -1285,7 +1284,6 @@ function Dumper:add_directive(line, name, a, b)
         local b1 = math.floor(a/0x100) % 0x100
         self:add_bytes(line, b1, b0)
     elseif name == 'WORD' then
-        -- TODO: ensure lua numbers being floats doesn't cause accuracy issues
         local b0 = a % 0x100
         local b1 = math.floor(a/0x100) % 0x100
         local b2 = math.floor(a/0x10000) % 0x100
