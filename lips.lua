@@ -12,6 +12,8 @@ local assembler = {
     ]],
 }
 
+local floor = math.floor
+
 local Class = function(inherit)
     local class = {}
     local mt_obj = {__index = class}
@@ -25,6 +27,10 @@ local Class = function(inherit)
     }
 
     return setmetatable(class, mt_class)
+end
+
+local function bitrange(x, lower, upper)
+    return floor(x/2^lower) % 2^(upper - lower + 1)
 end
 
 local registers = {
@@ -1280,14 +1286,14 @@ function Dumper:add_directive(line, name, a, b)
     if name == 'BYTE' then
         self:add_bytes(line, a % 0x100)
     elseif name == 'HALFWORD' then
-        local b0 = a % 0x100
-        local b1 = math.floor(a/0x100) % 0x100
+        local b0 = bitrange(a, 0, 7)
+        local b1 = bitrange(a, 8, 15)
         self:add_bytes(line, b1, b0)
     elseif name == 'WORD' then
-        local b0 = a % 0x100
-        local b1 = math.floor(a/0x100) % 0x100
-        local b2 = math.floor(a/0x10000) % 0x100
-        local b3 = math.floor(a/0x1000000) % 0x100
+        local b0 = bitrange(a, 0, 7)
+        local b1 = bitrange(a, 8, 15)
+        local b2 = bitrange(a, 16, 23)
+        local b3 = bitrange(a, 24, 31)
         self:add_bytes(line, b3, b2, b1, b0)
     elseif name == 'ORG' then
         t.kind = 'goto'
@@ -1327,8 +1333,8 @@ function Dumper:desym(tok)
     elseif tok[1] == 'LABELSYM' then
         return self.labels[tok[2]]
     elseif tok[1] == 'LABELREL' then
-        local rel = math.floor(self.labels[tok[2]]/4)
-        rel = rel - 1 - math.floor(self.pos/4)
+        local rel = floor(self.labels[tok[2]]/4)
+        rel = rel - 1 - floor(self.pos/4)
         if rel > 0x8000 or rel <= -0x8000 then
             self:error('branch too far')
         end
@@ -1351,14 +1357,14 @@ function Dumper:toval(tok)
         end
         if tok[1] == 'UPPER' then
             local val = self:desym(tok[2])
-            return math.floor(val/0x10000)
+            return bitrange(val, 16, 31)
         elseif tok[1] == 'LOWER' then
             local val = self:desym(tok[2])
-            return val % 0x10000
+            return bitrange(val, 0, 15)
         elseif tok[1] == 'UPPEROFF' then
             local val = self:desym(tok[2])
-            local upper = math.floor(val/0x10000)
-            local lower = val % 0x10000
+            local upper = bitrange(val, 16, 31)
+            local lower = bitrange(val, 0, 15)
             if lower >= 0x8000 then
                 -- accommodate for offsets being signed
                 upper = (upper + 1) % 0x10000
@@ -1378,7 +1384,7 @@ function Dumper:toval(tok)
             return val % 0x10000
         elseif tok[1] == 'INDEX' then
             local val = self:desym(tok[2]) % 0x80000000
-            val = math.floor(val/4)
+            val = floor(val/4)
             return val
         else
             return self:desym(tok)
@@ -1427,8 +1433,8 @@ function Dumper:dump_instruction(t)
 
     if #t == 2 then
         local val = self:valvar(t[2], 26)
-        uw = uw + math.floor(val/0x10000)
-        lw = lw + val % 0x10000
+        uw = uw + bitrange(val, 16, 25)
+        lw = lw + bitrange(val, 0, 15)
     elseif #t == 4 then
         uw = uw + self:valvar(t[2], 5)*0x20
         uw = uw + self:valvar(t[3], 5)
@@ -1460,10 +1466,10 @@ function Dumper:dump()
         self.line = t.line
         if t.kind == 'instruction' then
             uw, lw = self:dump_instruction(t)
-            local b0 = lw % 0x100
-            local b1 = math.floor(lw/0x100)
-            local b2 = uw % 0x100
-            local b3 = math.floor(uw/0x100)
+            local b0 = bitrange(lw, 0, 7)
+            local b1 = bitrange(lw, 8, 15)
+            local b2 = bitrange(uw, 0, 7)
+            local b3 = bitrange(uw, 8, 15)
             self:write{b3, b2, b1, b0}
         elseif t.kind == 'bytes' then
             self:write(t)
