@@ -881,7 +881,7 @@ function Parser:const(relative, no_label)
 end
 
 function Parser:format_in(informat)
-    args = {}
+    local args = {}
     for i=1,#informat do
         local c = informat:sub(i, i)
         local c2 = informat:sub(i + 1, i + 1)
@@ -1006,6 +1006,7 @@ function Parser:instruction()
     elseif h == 'LA' then
         local lui = instructions['LUI']
         local addiu = instructions['ADDIU']
+        local args = {}
         args.rt = self:register()
         self:optional_comma()
         local im = self:const()
