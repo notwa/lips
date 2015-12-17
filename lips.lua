@@ -192,7 +192,7 @@ local instructions = {
     SLTIU   = {11, 'tsi', 'sti'},
     XORI    = {14, 'tsi', 'sti'},
 
-    ADD     = {0, 'dst', 'std0C', 32},
+    ADD     = {0, 'pseudodst', 'std0C', 32},
     ADDU    = {0, 'dst', 'std0C', 33},
     AND     = {0, 'dst', 'std0C', 36},
     DADD    = {0, 'dst', 'std0C', 44},
@@ -391,6 +391,7 @@ local instructions = {
     -- variable arguments
     PUSH    = 'PUSH',
     POP     = 'POP',
+    JPOP    = 'JPOP',
 
     ABS     = {}, -- BGEZ NOP SUB?
     MUL     = {}, -- MULT MFLO
@@ -1029,9 +1030,10 @@ function Parser:instruction()
         self:format_out(lui[3], lui[1], args, lui[4], lui[5])
         args.immediate = {'LOWER', im}
         self:format_out(addiu[3], addiu[1], args, addiu[4], addiu[5])
-    elseif h == 'PUSH' or h == 'POP' then
+    elseif h == 'PUSH' or h == 'POP' or h == 'JPOP' then
         local addi = instructions['ADDI']
         local w = instructions[h == 'PUSH' and 'SW' or 'LW']
+        local jr = instructions['JR']
         local registers = {}
         while not self:is_EOL() do
             local r = self:register()
@@ -1061,7 +1063,11 @@ function Parser:instruction()
                 self:format_out(w[3], w[1], args, w[4], w[5])
             end
         end
-        if h == 'POP' then
+        if h == 'JPOP' then
+            args.rs = 'RA'
+            self:format_out(jr[3], jr[1], args, jr[4], jr[5])
+        end
+        if h == 'POP' or h == 'JPOP' then
             args.rt = 'SP'
             args.rs = 'SP'
             args.immediate = {'NUM', #registers*4}
