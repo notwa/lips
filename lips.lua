@@ -451,7 +451,7 @@ function Lexer:init(asm, fn)
 end
 
 local Dumper = Class()
-function Dumper:init(writer, fn)
+function Dumper:init(writer, fn, options)
     self.writer = writer
     self.fn = fn or '(string)'
     self.labels = {}
@@ -460,13 +460,15 @@ function Dumper:init(writer, fn)
     self.pos = 0
     self.size = 0
     self.lastcommand = nil
+    self.options = options or {}
 end
 
 local Parser = Class()
-function Parser:init(writer, fn)
+function Parser:init(writer, fn, options)
     self.fn = fn or '(string)'
-    self.dumper = Dumper(writer, fn)
+    self.dumper = Dumper(writer, fn, options)
     self.defines = {}
+    self.options = options or {}
 end
 
 function Lexer:error(msg)
@@ -1348,8 +1350,10 @@ function Dumper:desym(tok)
     elseif all_registers[tok] then
         return registers[tok] or fpu_registers[tok]
     elseif tok[1] == 'LABELSYM' then
-        return self.labels[tok[2]]
+        local offset = self.options.offset or 0
+        return self.labels[tok[2]] + offset
     elseif tok[1] == 'LABELREL' then
+        -- TODO: ensure label exists
         local rel = floor(self.labels[tok[2]]/4)
         rel = rel - 1 - floor(self.pos/4)
         if rel > 0x8000 or rel <= -0x8000 then
@@ -1533,7 +1537,7 @@ function assembler.assemble(fn_or_asm, writer, options)
             f:close()
         end
 
-        local parser = Parser(writer, fn)
+        local parser = Parser(writer, fn, options)
         return parser:parse(asm)
     end
 
