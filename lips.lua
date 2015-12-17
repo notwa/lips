@@ -192,7 +192,7 @@ local instructions = {
     SLTIU   = {11, 'tsi', 'sti'},
     XORI    = {14, 'tsi', 'sti'},
 
-    ADD     = {0, 'pseudodst', 'std0C', 32},
+    ADD     = {0, 'dst', 'std0C', 32},
     ADDU    = {0, 'dst', 'std0C', 33},
     AND     = {0, 'dst', 'std0C', 36},
     DADD    = {0, 'dst', 'std0C', 44},
