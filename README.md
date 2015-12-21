@@ -21,11 +21,12 @@ A derivative of [CajeASM's][caje] syntax.
 
 Instructions were primarily referenced from [the N64 Toolkit: Opcodes.][n64op]
 
-A more in-depth look at instructions for MIPS IV processors in general
+An in-depth look at instructions for MIPS IV processors
 is given by [the MIPS IV Instruction Set manual.][mipsiv]
+Most of this applies to our MIPS III architecture.
 
 [The MIPS64 Instruction Set manual][mips64] is sometimes useful.
-Much of it doesn't apply to our older MIPS IV architecture,
+Much of it doesn't apply to our older MIPS III architecture,
 but it's a little cleaner than the older manual.
 
 There's also a brief and incomplete [overview of MIPS instructions.][overview]
