@@ -1029,6 +1029,8 @@ function Parser:instruction()
         self:optional_comma()
         local im = self:const()
 
+        -- for us, this is just semantics. for a "real" assembler,
+        -- LA could add appropriate RELO LUI/ADDIU directives.
         if im[1] == 'LABELSYM' then
             self:error('use LA for labels')
         end
@@ -1058,13 +1060,6 @@ function Parser:instruction()
         args.rt = self:register()
         self:optional_comma()
         local im = self:const()
-
-        -- for us, this is just semantics. for a "real" assembler,
-        -- LA could add appropriate RELO LUI/ADDIU directives.
-        -- for that reason, we should always use the respective instructions.
-        if im[1] ~= 'LABELSYM' then
-            self:error('use LI for immediates')
-        end
 
         args.rs = args.rt
         args.immediate = {'UPPEROFF', im}
