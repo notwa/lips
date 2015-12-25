@@ -472,9 +472,7 @@ function Dumper:init(writer, fn, options)
     self.options = options or {}
     self.labels = {}
     self.commands = {}
-    self.buff = ''
-    self.pos = 0
-    self.size = 0
+    self.pos = options.offset or 0
     self.lastcommand = nil
 end
 
@@ -1346,9 +1344,6 @@ end
 
 function Dumper:advance(by)
     self.pos = self.pos + by
-    if self.pos > self.size then
-        self.size = self.pos
-    end
 end
 
 function Dumper:push_instruction(t)
@@ -1450,8 +1445,7 @@ function Dumper:desym(tok)
         if label == nil then
             self:error('undefined label')
         end
-        local offset = self.options.offset or 0
-        return label + offset
+        return label
     elseif tok[1] == 'LABELREL' then
         local label = self.labels[tok[2]]
         if label == nil then
@@ -1533,16 +1527,9 @@ function Dumper:valvar(tok, bits)
 end
 
 function Dumper:write(t)
-    -- this is gonna be really slow, but eh, optimization comes last
-    -- should really use a sparse table and fill in the string later
     for _, b in ipairs(t) do
-        if self.pos >= self.size then
-            error('Internal Error: pos out of range; size too small', 1)
-        end
         local s = ('%02X'):format(b)
-        local left = self.buff:sub(1, self.pos*2)
-        local right = self.buff:sub(self.pos*2 + 3)
-        self.buff = left..s..right
+        self.writer(self.pos, s)
         self.pos = self.pos + 1
     end
 end
@@ -1576,12 +1563,7 @@ function Dumper:dump_instruction(t)
 end
 
 function Dumper:dump()
-    self.pos = 0
-    self.buff = ''
-    for i=1,self.size do
-        self.buff = self.buff..'00'
-    end
-
+    self.pos = self.options.offset or 0
     for i, t in ipairs(self.commands) do
         if t.line == nil then
             error('Internal Error: no line number available')
@@ -1610,9 +1592,26 @@ function Dumper:dump()
             error('Internal Error: unknown command', 1)
         end
     end
+end
 
-    for i=1, self.size*2 - 1, 8 do
-        self.writer(self.buff:sub(i, i + 7))
+function assembler.word_writer()
+    local buff = {}
+    local max = 0
+    return function(pos, b)
+        if pos then
+            buff[pos] = b
+            if pos > max then
+                max = pos
+            end
+        else
+            for i=0, max, 4 do
+                local a = buff[i+0] or '00'
+                local b = buff[i+1] or '00'
+                local c = buff[i+2] or '00'
+                local d = buff[i+3] or '00'
+                print(a..b..c..d)
+            end
+        end
     end
 end
 
@@ -1621,7 +1620,8 @@ function assembler.assemble(fn_or_asm, writer, options)
     -- if fn_or_asm contains a newline; treat as assembly, otherwise load file.
     -- returns error message on error, or nil on success.
     fn_or_asm = tostring(fn_or_asm)
-    writer = writer or io.write
+    local default_writer = not writer
+    writer = writer or assembler.word_writer()
     options = options or {}
 
     function main()
@@ -1636,7 +1636,11 @@ function assembler.assemble(fn_or_asm, writer, options)
         end
 
         local parser = Parser(writer, fn, options)
-        return parser:parse(asm)
+        parser:parse(asm)
+
+        if default_writer then
+            writer()
+        end
     end
 
     if options.unsafe then
