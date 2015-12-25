@@ -585,7 +585,7 @@ function Lexer:read_number()
             return self:read_hex()
         elseif self.chr == '0' and self.chr2:find('%d') then
             self:nextc()
-            return self:read_octal_number()
+            return self:read_octal()
         else
             return self:read_decimal()
         end
