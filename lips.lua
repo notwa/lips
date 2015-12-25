@@ -559,7 +559,7 @@ end
 
 function Lexer:read_octal()
     local buff = self:read_chars('[0-7]')
-    local num = tonumber(buff)
+    local num = tonumber(buff, 8)
     if not num then self:error('invalid octal number') end
     return num
 end
