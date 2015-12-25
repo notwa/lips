@@ -669,13 +669,11 @@ end
 function Lexer:lex_string(yield)
     -- TODO: support escaping
     if self.chr ~= '"' then
-        print(self.chr, self.ord)
         self:error("expected opening double quote")
     end
     self:nextc()
     local buff = self:read_chars('[^"\n]')
     if self.chr ~= '"' then
-        print(self.chr)
         self:error("expected closing double quote")
     end
     self:nextc()
@@ -1018,6 +1016,8 @@ function Parser:instruction()
     local h = instructions[name]
     self:advance()
 
+    -- FIXME: errors thrown here probably have the wrong line number (+1)
+
     if h == nil then
         self:error('undefined instruction')
     elseif h == 'LI' then
@@ -1346,7 +1346,6 @@ function Parser:parse(asm)
 end
 
 function Dumper:error(msg)
-    --error(string.format('%s:%d: Dumper Error: %s', '(code)', self.pos, msg), 2)
     error(string.format('%s:%d: Error: %s', self.fn, self.line, msg), 2)
 end
 
