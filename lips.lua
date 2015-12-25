@@ -1596,7 +1596,7 @@ end
 
 function assembler.word_writer()
     local buff = {}
-    local max = 0
+    local max = -1
     return function(pos, b)
         if pos then
             buff[pos] = b
@@ -1604,6 +1604,7 @@ function assembler.word_writer()
                 max = pos
             end
         else
+            if max == -1 then return end
             for i=0, max, 4 do
                 local a = buff[i+0] or '00'
                 local b = buff[i+1] or '00'
