@@ -94,19 +94,17 @@ aliased to the appropriate register. eg: REG0 is R0, REG1 is at, REG2 is V0.
 
 * F#: coproccesor 1 registers, whereas # is a decimal number from 0 to 31.
 
-### Unimplemented
-
-all coprocessor 0 registers:
+* coprocessor 0 (system) registers are as follows:
 
 ```
-Index,     Random,    EntryLo0,     EntryLo1,
-Context,   PageMask,  Wired,        RESERVED,
-BadVAddr,  Count,     EntryHi,      Compare,
-Status,    Cause,     ExceptionPC,  PRId,
-Config,    LLAddr,    WatchLo,      WatchHi,
-XContext,  RESERVED,  RESERVED,     RESERVED,
-RESERVED,  RESERVED,  RESERVED,     CacheErr,
-TagLo,     TagHi,     ErrorEPC,     RESERVED
+Index     Random    EntryLo0  EntryLo1
+Context   PageMask  Wired     Reserved0
+BadVAddr  Count     EntryHi   Compare
+Status    Cause     EPC       PRevID
+Config    LLAddr    WatchLo   WatchHi
+XContext  Reserved1 Reserved2 Reserved3
+Reserved4 Reserved5 PErr      CacheErr
+TagLo     TagHi     ErrorEPC  Reserved6
 ```
 
 ## Directives
