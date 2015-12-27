@@ -413,8 +413,8 @@ local instructions = {
     SUBIU   = {9, 'tsk', 'sti'},        -- ADDIU RT, RS, -immediate
 
     -- ...that expand to multiple instructions
-    LI      = 'LI', -- only one instruction for values < 0x10000
-    LA      = 'LA',
+    LI      = {}, -- only one instruction for values < 0x10000
+    LA      = {},
 
     -- variable arguments
     PUSH    = 'PUSH',
@@ -426,11 +426,11 @@ local instructions = {
     --DIV     = {}, -- 3 arguments
     REM     = {}, -- 3 arguments
 
-    NAND    = 'NAND', -- AND, NOT
-    NANDI   = 'NANDI', -- ANDI, NOT
-    NORI    = 'NORI', -- ORI, NOT
-    ROL     = 'ROL', -- SLL, SRL, OR
-    ROR     = 'ROR', -- SRL, SLL, OR
+    NAND    = {}, -- AND, NOT
+    NANDI   = {}, -- ANDI, NOT
+    NORI    = {}, -- ORI, NOT
+    ROL     = {}, -- SLL, SRL, OR
+    ROR     = {}, -- SRL, SLL, OR
 
     SEQ     = {},
     SEQI    = {},
@@ -1036,7 +1036,7 @@ end
 
 local overrides = {}
 
-function overrides.LI(self, h)
+function overrides.LI(self, name)
     local lui = instructions['LUI']
     local ori = instructions['ORI']
     local addiu = instructions['ADDIU']
@@ -1071,7 +1071,7 @@ function overrides.LI(self, h)
     end
 end
 
-function overrides.LA(self, h)
+function overrides.LA(self, name)
     local lui = instructions['LUI']
     local addiu = instructions['ADDIU']
     local args = {}
@@ -1086,9 +1086,9 @@ function overrides.LA(self, h)
     self:format_out(addiu[3], addiu[1], args, addiu[4], addiu[5])
 end
 
-function overrides.PUSH(self, h)
+function overrides.PUSH(self, name)
     local addi = instructions['ADDI']
-    local w = instructions[h == 'PUSH' and 'SW' or 'LW']
+    local w = instructions[name == 'PUSH' and 'SW' or 'LW']
     local jr = instructions['JR']
     local stack = {}
     while not self:is_EOL() do
@@ -1108,10 +1108,10 @@ function overrides.PUSH(self, h)
         end
     end
     if #stack == 0 then
-        self:error(h..' requires at least one argument')
+        self:error(name..' requires at least one argument')
     end
     local args = {}
-    if h == 'PUSH' then
+    if name == 'PUSH' then
         args.rt = 'SP'
         args.rs = 'SP'
         args.immediate = {'NEGATE', {'NUM', #stack*4}}
@@ -1125,11 +1125,11 @@ function overrides.PUSH(self, h)
             self:format_out(w[3], w[1], args, w[4], w[5])
         end
     end
-    if h == 'JPOP' then
+    if name == 'JPOP' then
         args.rs = 'RA'
         self:format_out(jr[3], jr[1], args, jr[4], jr[5])
     end
-    if h == 'POP' or h == 'JPOP' then
+    if name == 'POP' or name == 'JPOP' then
         args.rt = 'SP'
         args.rs = 'SP'
         args.immediate = {'NUM', #stack*4}
@@ -1139,7 +1139,7 @@ end
 overrides.POP = overrides.PUSH
 overrides.JPOP = overrides.PUSH
 
-function overrides.NAND(self, h)
+function overrides.NAND(self, name)
     local and_ = instructions['AND']
     local nor = instructions['NOR']
     local args = {}
@@ -1154,7 +1154,7 @@ function overrides.NAND(self, h)
     self:format_out(nor[3], nor[1], args, nor[4], nor[5])
 end
 
-function overrides.NANDI(self, h)
+function overrides.NANDI(self, name)
     local andi = instructions['ANDI']
     local nor = instructions['NOR']
     local args = {}
@@ -1170,7 +1170,7 @@ function overrides.NANDI(self, h)
     self:format_out(nor[3], nor[1], args, nor[4], nor[5])
 end
 
-function overrides.NORI(self, h)
+function overrides.NORI(self, name)
     local ori = instructions['ORI']
     local nor = instructions['NOR']
     local args = {}
@@ -1186,7 +1186,7 @@ function overrides.NORI(self, h)
     self:format_out(nor[3], nor[1], args, nor[4], nor[5])
 end
 
-function overrides.ROL(self, h)
+function overrides.ROL(self, name)
     local sll = instructions['SLL']
     local srl = instructions['SRL']
     local or_ = instructions['OR']
@@ -1213,7 +1213,7 @@ function overrides.ROL(self, h)
     self:format_out(or_[3], or_[1], args, or_[4], or_[5])
 end
 
-function overrides.ROR(self, h)
+function overrides.ROR(self, name)
     local sll = instructions['SLL']
     local srl = instructions['SRL']
     local or_ = instructions['OR']
@@ -1240,14 +1240,15 @@ function overrides.ROR(self, h)
     self:format_out(or_[3], or_[1], args, or_[4], or_[5])
 end
 
-function overrides.JR(self, h)
+function overrides.JR(self, name)
+    local jr = instructions['JR']
     local args = {}
     if self:is_EOL() then
         args.rs = 'RA'
     else
         args.rs = self:register()
     end
-    self:format_out(h[3], h[1], args, h[4], h[5])
+    self:format_out(jr[3], jr[1], args, jr[4], jr[5])
 end
 
 function Parser:instruction()
@@ -1259,8 +1260,8 @@ function Parser:instruction()
 
     if h == nil then
         self:error('undefined instruction')
-    elseif overrides[h] then
-        overrides[h](self, h)
+    elseif overrides[name] then
+        overrides[name](self, name)
     elseif h[2] == 'tob' then -- or h[2] == 'Tob' then
         local lui = instructions['LUI']
         local args = {}
