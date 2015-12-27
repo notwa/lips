@@ -1474,7 +1474,9 @@ function Dumper:desym(tok)
         if label == nil then
             self:error('undefined label')
         end
-        local rel = floor(label/4) - 1 - floor(self.pos/4)
+        label = label % 0x80000000
+        local pos = self.pos % 0x80000000
+        local rel = floor(label/4) - 1 - floor(pos/4)
         if rel > 0x8000 or rel <= -0x8000 then
             self:error('branch too far')
         end
