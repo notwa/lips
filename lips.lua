@@ -176,7 +176,7 @@ local instructions = {
     J       = {2, 'I', 'I'},
     JAL     = {3, 'I', 'I'},
 
-    JALR    = {0, 'sd', 's0d0C', 9},
+    JALR    = {0, 'ds', 's0d0C', 9},
 
     MTHI    = {0, 's', 's000C', 17},
     MTLO    = {0, 's', 's000C', 19},
@@ -422,9 +422,9 @@ local instructions = {
     LA      = {},
 
     -- variable arguments
-    PUSH    = 'PUSH',
-    POP     = 'POP',
-    JPOP    = 'JPOP',
+    PUSH    = {},
+    POP     = {},
+    JPOP    = {},
 
     ABS     = {}, -- BGEZ NOP SUB?
     MUL     = {}, -- MULT MFLO
