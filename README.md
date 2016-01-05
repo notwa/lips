@@ -48,17 +48,9 @@ Besides implicit arguments for existing instructions, there are:
 
 * ABS, MUL, DIV, REM
 
-* SEQ, SEQI, SEQIU, SEQU
+* BGE, BLE, BLT, BGT
 
-* SGE, SGEI, SGEIU, SGEU
-
-* SGT, SGTI, SGTIU, SGTU
-
-* SLE, SLEI, SLEIU, SLEU
-
-* SNE, SNEI, SNEIU, SNEU
-
-* BEQI, BNEI, BGE, BGEI, BLE, BLEI, BLT, BLTI, BGT, BGTI
+* any Set (Condition) \[Immediate\] \[Unsigned\] pseudo-instructions
 
 ## Registers
 
@@ -92,7 +84,7 @@ In order of numerical value, with intended usage:
 * REG#: whereas # is a decimal number from 0 to 31.
 aliased to the appropriate register. eg: REG0 is R0, REG1 is at, REG2 is V0.
 
-* F#: coproccesor 1 registers, whereas # is a decimal number from 0 to 31.
+* F#: coprocessor 1 registers, whereas # is a decimal number from 0 to 31.
 
 * coprocessor 0 (system) registers are as follows:
 
@@ -146,6 +138,13 @@ butts:  HEX {
 .align
 ```
 
+* `.inc {filename}`  
+`.incasm {filename}`  
+`.include {filename}`  
+include an external assembly file as-is at this position.
+lips will look for the included file
+in the directory of the file using the directive.
+
 ### Unimplemented
 
 * FLOAT: writes a list of 32-bit floating point numbers until end-of-line.
@@ -155,7 +154,5 @@ and thus accuracy issues.
 * ASCII: writes a string using its characters' ASCII values.
 
 * ASCIIZ: same as ASCII, but with a null byte added to the end.
-
-* INC, INCASM, INCLUDE: include an external assembly file as-is at this position.
 
 * INCBIN: write an external binary file as-is at this position.
