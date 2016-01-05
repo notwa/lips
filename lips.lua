@@ -409,6 +409,8 @@ local instructions = {
     -- pseudo-instructions
     B       = {4, 'r', '00o'},          -- BEQ R0, R0, offset
     BAL     = {1, 'r', '0Co', 17},      -- BGEZAL R0, offset
+    BEQZ    = {4, 'sr', 's0o'},         -- BEQ RS, R0, offset
+    BNEZ    = {5, 'sr', 's0o'},         -- BNE RS, R0, offset
     CL      = {0, 'd', '00d0C', 37},    -- OR RD, R0, R0
     MOV     = {0, 'ds', 's0d0C', 37},   -- OR RD, RS, R0
     NEG     = {0, 'dt', '0td0C', 34},   -- SUB RD, R0, RT
@@ -426,7 +428,7 @@ local instructions = {
     POP     = {},
     JPOP    = {},
 
-    ABS     = {}, -- BGEZ NOP SUB?
+    ABS     = {}, -- BGEZ NOP SUBU?
     MUL     = {}, -- MULT MFLO
     --DIV     = {}, -- 3 arguments
     REM     = {}, -- 3 arguments
@@ -437,37 +439,18 @@ local instructions = {
     ROL     = {}, -- SLL, SRL, OR
     ROR     = {}, -- SRL, SLL, OR
 
-    SEQ     = {},
-    SEQI    = {},
-    SEQIU   = {},
-    SEQU    = {},
-    SGE     = {},
-    SGEI    = {},
-    SGEIU   = {},
-    SGEU    = {},
-    SGT     = {},
-    SGTI    = {},
-    SGTIU   = {},
-    SGTU    = {},
-    SLE     = {},
-    SLEI    = {},
-    SLEIU   = {},
-    SLEU    = {},
-    SNE     = {},
-    SNEI    = {},
-    SNEIU   = {},
-    SNEU    = {},
+    SEQ     = {}, SEQI    = {}, SEQIU   = {}, SEQU    = {},
+    SGE     = {}, SGEI    = {}, SGEIU   = {}, SGEU    = {},
+    SGT     = {}, SGTI    = {}, SGTIU   = {}, SGTU    = {},
+    SLE     = {}, SLEI    = {}, SLEIU   = {}, SLEU    = {},
+    SNE     = {}, SNEI    = {}, SNEIU   = {}, SNEU    = {},
 
-    BEQI    = {},
-    BNEI    = {},
-    BGE     = {},
-    BGEI    = {},
-    BLE     = {},
-    BLEI    = {},
-    BLT     = {},
-    BLTI    = {},
-    BGT     = {},
-    BGTI    = {},
+                  BEQI    = {},
+                  BNEI    = {},
+    BGE     = {}, BGEI    = {},
+    BLE     = {}, BLEI    = {},
+    BLT     = {}, BLTI    = {},
+    BGT     = {}, BGTI    = {},
 }
 
 local all_instructions = {}
@@ -1491,6 +1474,7 @@ function Dumper:add_directive(line, name, a, b)
 end
 
 function Dumper:desym(tok)
+    -- FIXME: errors can give wrong filename, also off by one
     if type(tok[2]) == 'number' then
         return tok[2]
     elseif tok[1] == 'LABELSYM' then
