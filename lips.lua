@@ -978,7 +978,7 @@ function Parser:format_in(informat)
     return args
 end
 
-function Parser:format_out(outformat, first, args, const, formatconst)
+function Parser:format_out_raw(outformat, first, args, const, formatconst)
     local lookup = {
         [1]=self.dumper.add_instruction_j,
         [3]=self.dumper.add_instruction_i,
@@ -1022,6 +1022,10 @@ function Parser:format_out(outformat, first, args, const, formatconst)
     f(self.dumper, self.line, first, out[1], out[2], out[3], out[4], out[5])
 end
 
+function Parser:format_out(t, args)
+    self:format_out_raw(t[3], t[1], args, t[4], t[5])
+end
+
 local overrides = {}
 
 function overrides.LI(self, name)
@@ -1043,19 +1047,19 @@ function overrides.LI(self, name)
     if im[2] >= 0x10000 and im[2] <= 0xFFFF8000 then
         args.rs = args.rt
         args.immediate = {'UPPER', im}
-        self:format_out(lui[3], lui[1], args, lui[4], lui[5])
+        self:format_out(lui, args)
         if im[2] % 0x10000 ~= 0 then
             args.immediate = {'LOWER', im}
-            self:format_out(ori[3], ori[1], args, ori[4], ori[5])
+            self:format_out(ori, args)
         end
     elseif im[2] >= 0x8000 and im[2] < 0x10000 then
         args.rs = 'R0'
         args.immediate = {'LOWER', im}
-        self:format_out(ori[3], ori[1], args, ori[4], ori[5])
+        self:format_out(ori, args)
     else
         args.rs = 'R0'
         args.immediate = {'LOWER', im}
-        self:format_out(addiu[3], addiu[1], args, addiu[4], addiu[5])
+        self:format_out(addiu, args)
     end
 end
 
@@ -1069,9 +1073,9 @@ function overrides.LA(self, name)
 
     args.rs = args.rt
     args.immediate = {'UPPEROFF', im}
-    self:format_out(lui[3], lui[1], args, lui[4], lui[5])
+    self:format_out(lui, args)
     args.immediate = {'LOWER', im}
-    self:format_out(addiu[3], addiu[1], args, addiu[4], addiu[5])
+    self:format_out(addiu, args)
 end
 
 function overrides.PUSH(self, name)
@@ -1103,25 +1107,25 @@ function overrides.PUSH(self, name)
         args.rt = 'SP'
         args.rs = 'SP'
         args.immediate = {'NEGATE', {'NUM', #stack*4}}
-        self:format_out(addi[3], addi[1], args, addi[4], addi[5])
+        self:format_out(addi, args)
     end
     args.base = 'SP'
     for i, r in ipairs(stack) do
         args.rt = r
         if r ~= '' then
             args.offset = {'NUM', (i - 1)*4}
-            self:format_out(w[3], w[1], args, w[4], w[5])
+            self:format_out(w, args)
         end
     end
     if name == 'JPOP' then
         args.rs = 'RA'
-        self:format_out(jr[3], jr[1], args, jr[4], jr[5])
+        self:format_out(jr, args)
     end
     if name == 'POP' or name == 'JPOP' then
         args.rt = 'SP'
         args.rs = 'SP'
         args.immediate = {'NUM', #stack*4}
-        self:format_out(addi[3], addi[1], args, addi[4], addi[5])
+        self:format_out(addi, args)
     end
 end
 overrides.POP = overrides.PUSH
@@ -1136,10 +1140,10 @@ function overrides.NAND(self, name)
     args.rs = self:register()
     self:optional_comma()
     args.rt = self:register()
-    self:format_out(and_[3], and_[1], args, and_[4], and_[5])
+    self:format_out(and_, args)
     args.rs = args.rd
     args.rt = 'R0'
-    self:format_out(nor[3], nor[1], args, nor[4], nor[5])
+    self:format_out(nor, args)
 end
 
 function overrides.NANDI(self, name)
@@ -1167,11 +1171,11 @@ function overrides.NORI(self, name)
     args.rs = self:register()
     self:optional_comma()
     args.immediate = self:const()
-    self:format_out(ori[3], ori[1], args, ori[4], ori[5])
+    self:format_out(ori, args)
     args.rd = args.rt
     args.rs = args.rt
     args.rt = 'R0'
-    self:format_out(nor[3], nor[1], args, nor[4], nor[5])
+    self:format_out(nor, args)
 end
 
 function overrides.ROL(self, name)
@@ -1191,14 +1195,14 @@ function overrides.ROL(self, name)
     if args.rd == args.rt and args.rd ~= 'R0' then
         self:error('registers cannot be the same')
     end
-    self:format_out(sll[3], sll[1], args, sll[4], sll[5])
+    self:format_out(sll, args)
     args.rd = 'AT'
     args.immediate = {'NUM', 32 - args.immediate[2]}
-    self:format_out(srl[3], srl[1], args, srl[4], srl[5])
+    self:format_out(srl, args)
     args.rd = left
     args.rs = left
     args.rt = 'AT'
-    self:format_out(or_[3], or_[1], args, or_[4], or_[5])
+    self:format_out(or_, args)
 end
 
 function overrides.ROR(self, name)
@@ -1218,14 +1222,14 @@ function overrides.ROR(self, name)
     if args.rd == args.rt and args.rd ~= 'R0' then
         self:error('registers cannot be the same')
     end
-    self:format_out(srl[3], srl[1], args, srl[4], srl[5])
+    self:format_out(srl, args)
     args.rd = 'AT'
     args.immediate = {'NUM', 32 - args.immediate[2]}
-    self:format_out(sll[3], sll[1], args, sll[4], sll[5])
+    self:format_out(sll, args)
     args.rd = right
     args.rs = right
     args.rt = 'AT'
-    self:format_out(or_[3], or_[1], args, or_[4], or_[5])
+    self:format_out(or_, args)
 end
 
 function overrides.JR(self, name)
@@ -1236,7 +1240,7 @@ function overrides.JR(self, name)
     else
         args.rs = self:register()
     end
-    self:format_out(jr[3], jr[1], args, jr[4], jr[5])
+    self:format_out(jr, args)
 end
 
 function Parser:instruction()
@@ -1261,7 +1265,7 @@ function Parser:instruction()
             local lui_args = {}
             lui_args.immediate = {'UPPEROFF', o}
             lui_args.rt = 'AT'
-            self:format_out(lui[3], lui[1], lui_args, lui[4], lui[5])
+            self:format_out(lui, lui_args)
             args.offset = {'LOWER', o}
             args.base = 'AT'
         else
@@ -1272,10 +1276,10 @@ function Parser:instruction()
             self:optional_comma()
             args.base = self:deref()
         end
-        self:format_out(h[3], h[1], args, h[4], h[5])
+        self:format_out(h, args)
     elseif h[2] ~= nil then
         args = self:format_in(h[2])
-        self:format_out(h[3], h[1], args, h[4], h[5])
+        self:format_out(h, args)
     else
         self:error('unimplemented instruction')
     end
