@@ -1243,6 +1243,100 @@ function overrides.JR(self, name)
     self:format_out(jr, args)
 end
 
+local branch_basics = {
+    BEQI = "BEQ",
+    BGEI = "BEQ",
+    BGTI = "BEQ",
+    BLEI = "BNE",
+    BLTI = "BNE",
+    BNEI = "BNE",
+}
+
+function overrides.BEQI(self, name)
+    local addiu = instructions['ADDIU']
+    local branch = instructions[branch_basics[name]]
+    local args = {}
+    local reg = self:register()
+    self:optional_comma()
+    args.immediate = self:const()
+    self:optional_comma()
+    args.offset = {'SIGNED', self:const('relative')}
+
+    if reg == 'AT' then
+        self:error('register cannot be AT in this pseudo-instruction')
+    end
+
+    args.rt = 'AT'
+    args.rs = 'R0'
+    self:format_out(addiu, args)
+
+    args.rs = reg
+    self:format_out(branch, args)
+end
+overrides.BNEI = overrides.BEQI
+
+function overrides.BLTI(self, name)
+    local slti = instructions['SLTI']
+    local branch = instructions[branch_basics[name]]
+    local args = {}
+    args.rs = self:register()
+    self:optional_comma()
+    args.immediate = self:const()
+    self:optional_comma()
+    args.offset = {'SIGNED', self:const('relative')}
+
+    if reg == 'AT' then
+        self:error('register cannot be AT in this pseudo-instruction')
+    end
+
+    args.rt = 'AT'
+    self:format_out(slti, args)
+
+    args.rs = 'AT'
+    args.rt = 'R0'
+    self:format_out(branch, args)
+end
+overrides.BGEI = overrides.BLTI
+
+function overrides.BLEI(self, name)
+    -- TODO: this can probably be optimized
+    local addiu = instructions['ADDIU']
+    local slt = instructions['SLT']
+    local branch = instructions[branch_basics[name]]
+    local beq = instructions['BEQ']
+    local args = {}
+    local reg = self:register()
+    self:optional_comma()
+    args.immediate = self:const()
+    self:optional_comma()
+    local offset = {'SIGNED', self:const('relative')}
+
+    if reg == 'AT' then
+        self:error('register cannot be AT in this pseudo-instruction')
+    end
+
+    args.rt = 'AT'
+    args.rs = 'R0'
+    self:format_out(addiu, args)
+
+    if name == 'BLEI' then
+        args.offset = offset
+    else
+        args.offset = 2 -- branch to delay slot of the next branch
+    end
+    args.rs = reg
+    self:format_out(beq, args)
+
+    args.rd = 'AT'
+    self:format_out(slt, args)
+
+    args.rs = 'AT'
+    args.rt = 'R0'
+    args.offset = offset
+    self:format_out(branch, args)
+end
+overrides.BGTI = overrides.BLEI
+
 function Parser:instruction()
     local name = self.tok
     local h = instructions[name]
