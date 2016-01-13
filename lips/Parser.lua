@@ -170,17 +170,17 @@ function Parser:format_in(informat)
         elseif c == 't' and not args.rt then
             args.rt = self:register()
         elseif c == 'D' and not args.fd then
-            args.fd = self:register(fpu_registers)
+            args.fd = self:register(data.fpu_registers)
         elseif c == 'S' and not args.fs then
-            args.fs = self:register(fpu_registers)
+            args.fs = self:register(data.fpu_registers)
         elseif c == 'T' and not args.ft then
-            args.ft = self:register(fpu_registers)
+            args.ft = self:register(data.fpu_registers)
         elseif c == 'X' and not args.rd then
-            args.rd = self:register(sys_registers)
+            args.rd = self:register(data.sys_registers)
         elseif c == 'Y' and not args.rs then
-            args.rs = self:register(sys_registers)
+            args.rs = self:register(data.sys_registers)
         elseif c == 'Z' and not args.rt then
-            args.rt = self:register(sys_registers)
+            args.rt = self:register(data.sys_registers)
         elseif c == 'o' and not args.offset then
             args.offset = {'SIGNED', self:const()}
         elseif c == 'r' and not args.offset then
