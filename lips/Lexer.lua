@@ -335,8 +335,11 @@ function Lexer:lex(_yield)
             self:nextc()
             local buff = self:read_chars('[%w]')
             local up = buff:upper()
+            if data.directive_aliases[up] then
+                up = data.directive_aliases[up]
+            end
             if not data.all_directives[up] then
-                self:error('not a directive')
+                self:error('unknown directive')
             end
             if up == 'INC' or up == 'INCASM' or up == 'INCLUDE' then
                 yield('DIR', 'INC')
