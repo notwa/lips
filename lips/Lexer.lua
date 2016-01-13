@@ -1,10 +1,21 @@
 local byte = string.byte
 local char = string.char
 local find = string.find
+local open = io.open
 
-local data = require "data"
+local data = require "lips.data"
 
-local Lexer = require("Class")()
+local function readfile(fn)
+    local f = open(fn, 'r')
+    if not f then
+        error('could not open assembly file for reading: '..tostring(fn), 2)
+    end
+    local asm = f:read('*a')
+    f:close()
+    return asm
+end
+
+local Lexer = require("lips.Class")()
 function Lexer:init(asm, fn, options)
     self.asm = asm
     self.fn = fn or '(string)'

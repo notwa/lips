@@ -1,4 +1,6 @@
-local data = require "data"
+local insert = table.insert
+
+local data = require "lips.data"
 local instructions = data.instructions
 
 local overrides = {}

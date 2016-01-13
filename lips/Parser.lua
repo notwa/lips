@@ -1,12 +1,12 @@
 local insert = table.insert
 local format = string.format
 
-local data = require "data"
-local overrides = require "overrides"
-local Dumper = require "Dumper"
-local Lexer = require "Lexer"
+local data = require "lips.data"
+local overrides = require "lips.overrides"
+local Dumper = require "lips.Dumper"
+local Lexer = require "lips.Lexer"
 
-local Parser = require("Class")()
+local Parser = require("lips.Class")()
 function Parser:init(writer, fn, options)
     self.fn = fn or '(string)'
     self.main_fn = self.fn

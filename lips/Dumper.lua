@@ -1,13 +1,13 @@
 local insert = table.insert
 local floor = math.floor
 
-local data = require "data"
+local data = require "lips.data"
 
 local function bitrange(x, lower, upper)
     return floor(x/2^lower) % 2^(upper - lower + 1)
 end
 
-local Dumper = require("Class")()
+local Dumper = require("lips.Class")()
 function Dumper:init(writer, fn, options)
     self.writer = writer
     self.fn = fn or '(string)'

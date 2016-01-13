@@ -12,7 +12,9 @@ local assembler = {
     ]],
 }
 
-local Parser = require "Parser"
+local open = io.open
+
+local Parser = require "lips.Parser"
 
 local function readfile(fn)
     local f = open(fn, 'r')
