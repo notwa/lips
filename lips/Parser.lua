@@ -264,27 +264,34 @@ function Parser:instruction()
         self:error('undefined instruction')
     elseif overrides[name] then
         overrides[name](self, name)
-    elseif h[2] == 'tob' then -- or h[2] == 'Tob' then
+    elseif h[2] == 'tob' then -- TODO: or h[2] == 'Tob' then
         local lui = data.instructions['LUI']
+        local addu = data.instructions['ADDU']
         local args = {}
         args.rt = self:register()
         self:optional_comma()
-        local o = self:const()
-        local is_label = o[1] == 'LABELSYM'
-        if self:is_EOL() then
-            local lui_args = {}
-            lui_args.immediate = {'UPPEROFF', o}
-            lui_args.rt = 'AT'
-            self:format_out(lui, lui_args)
-            args.offset = {'LOWER', o}
-            args.base = 'AT'
-        else
-            if is_label then
-                self:error('labels cannot be used as offsets')
-            end
-            args.offset = {'SIGNED', o}
-            self:optional_comma()
+        if self.tt == 'DEREF' then
+            args.offset = {'NUM', 0}
             args.base = self:deref()
+        else -- NUM or LABELSYM
+            local lui_args = {}
+            local addu_args = {}
+            local o = self:const()
+            args.offset = {'LOWER', o}
+            if o[1] == 'LABELSYM' or o[2] >= 0x80000000 then
+                lui_args.immediate = {'UPPEROFF', o}
+                lui_args.rt = 'AT'
+                self:format_out(lui, lui_args)
+                if not self:is_EOL() then
+                    addu_args.rd = 'AT'
+                    addu_args.rs = 'AT'
+                    addu_args.rt = self:deref()
+                    self:format_out(addu, addu_args)
+                end
+                args.base = 'AT'
+            else
+                args.base = self:deref()
+            end
         end
         self:format_out(h, args)
     elseif h[2] ~= nil then

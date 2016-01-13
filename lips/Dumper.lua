@@ -146,7 +146,7 @@ function Dumper:desym(tok)
         end
         return rel % 0x10000
     end
-    self:error('failed to desym') -- internal error?
+    error('Internal Error: failed to desym')
 end
 
 function Dumper:toval(tok)
