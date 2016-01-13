@@ -85,12 +85,20 @@ function Parser:directive()
             end
             self:expect_EOL()
         end
-    elseif name == 'BYTE' or name == 'HALFWORD' or name == 'WORD' then
+    elseif name == 'BYTE' or name == 'HALFWORD' then
         self.dumper:add_directive(line, name, self:number())
         while not self:is_EOL() do
             self:advance()
             self:optional_comma()
             self.dumper:add_directive(line, name, self:number())
+        end
+        self:expect_EOL()
+    elseif name == 'WORD' then -- allow labels in word directives
+        self.dumper:add_directive(line, name, self:const()[2])
+        while not self:is_EOL() do
+            self:advance()
+            self:optional_comma()
+            self.dumper:add_directive(line, name, self:const()[2])
         end
         self:expect_EOL()
     elseif name == 'INC' then

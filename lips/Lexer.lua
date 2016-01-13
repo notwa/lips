@@ -221,7 +221,6 @@ function Lexer:lex_block_comment(yield)
 end
 
 function Lexer:lex_string(yield)
-    -- TODO: support escaping
     if self.chr ~= '"' then
         self:error('expected opening double quote')
     end

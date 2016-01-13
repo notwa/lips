@@ -80,11 +80,17 @@ function Dumper:add_directive(line, name, a, b)
         local b1 = bitrange(a, 8, 15)
         self:add_bytes(line, b1, b0)
     elseif name == 'WORD' then
-        local b0 = bitrange(a, 0, 7)
-        local b1 = bitrange(a, 8, 15)
-        local b2 = bitrange(a, 16, 23)
-        local b3 = bitrange(a, 24, 31)
-        self:add_bytes(line, b3, b2, b1, b0)
+        if type(a) == 'string' then
+            local t = {line=line, kind='label', name=a}
+            insert(self.commands, t)
+            self:advance(4)
+        else
+            local b0 = bitrange(a, 0, 7)
+            local b1 = bitrange(a, 8, 15)
+            local b2 = bitrange(a, 16, 23)
+            local b3 = bitrange(a, 24, 31)
+            self:add_bytes(line, b3, b2, b1, b0)
+        end
     elseif name == 'ORG' then
         t.kind = 'goto'
         t.addr = a
@@ -271,8 +277,16 @@ function Dumper:dump()
             else
                 self.pos = self.pos + t.skip
             end
+        elseif t.kind == 'label' then
+            local val = self:desym{'LABELSYM', t.name}
+            val = (val % 0x80000000) + 0x80000000
+            local b0 = bitrange(val, 0, 7)
+            local b1 = bitrange(val, 8, 15)
+            local b2 = bitrange(val, 16, 23)
+            local b3 = bitrange(val, 24, 31)
+            self:write{b3, b2, b1, b0}
         else
-            error('Internal Error: unknown command', 1)
+            error('Internal Error: unknown command')
         end
     end
 end
