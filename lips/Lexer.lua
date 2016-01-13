@@ -1,9 +1,24 @@
 local byte = string.byte
 local char = string.char
 local find = string.find
+local format = string.format
+local insert = table.insert
 local open = io.open
 
 local data = require "lips.data"
+
+local simple_escapes = {
+    ['0']   = 0x00,
+    ['\\']  = 0x5C,
+    ['"']   = 0x22,
+    ['a']   = 0x07,
+    ['b']   = 0x08,
+    ['f']   = 0x0C,
+    ['n']   = 0x0A,
+    ['r']   = 0x0D,
+    ['t']   = 0x09,
+    ['v']   = 0x0B,
+}
 
 local function readfile(fn)
     local f = open(fn, 'r')
@@ -208,12 +223,48 @@ end
 function Lexer:lex_string(yield)
     -- TODO: support escaping
     if self.chr ~= '"' then
-        self:error("expected opening double quote")
+        self:error('expected opening double quote')
+    end
+    self:nextc()
+
+    local bytes = {}
+    while true do
+        if self.chr == '\n' then
+            self:error('unimplemented')
+            self:nextc()
+            yield('EOL', '\n')
+        elseif self.ord == self.EOF then
+            self:nextc()
+            self:error('unexpected EOF; incomplete string')
+        elseif self.chr == '"' then
+            self:nextc()
+            break
+        elseif self.chr == '\\' then
+            self:nextc()
+            local simple = simple_escapes[self.chr]
+            if simple then
+                insert(bytes, simple)
+            else
+                self:error('unknown escape sequence')
+            end
+            self:nextc()
+        else
+            insert(bytes, byte(self.chr))
+            self:nextc()
+        end
+    end
+
+    yield('STRING', bytes)
+end
+
+function Lexer:lex_string_naive(yield) -- no escape sequences
+    if self.chr ~= '"' then
+        self:error('expected opening double quote')
     end
     self:nextc()
     local buff = self:read_chars('[^"\n]')
     if self.chr ~= '"' then
-        self:error("expected closing double quote")
+        self:error('expected closing double quote')
     end
     self:nextc()
     yield('STRING', buff)
@@ -222,7 +273,7 @@ end
 function Lexer:lex_include(_yield)
     self:read_chars('%s')
     local fn
-    self:lex_string(function(tt, tok)
+    self:lex_string_naive(function(tt, tok)
         fn = tok
     end)
     if self.options.path then
@@ -293,6 +344,8 @@ function Lexer:lex(_yield)
             else
                 yield('DIR', up)
             end
+        elseif self.chr == '"' then
+            self:lex_string(yield)
         elseif self.chr == '@' then
             self:nextc()
             local buff = self:read_chars('[%w_]')

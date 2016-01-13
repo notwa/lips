@@ -145,14 +145,17 @@ include an external assembly file as-is at this position.
 lips will look for the included file
 in the directory of the file using the directive.
 
+* `.ascii "some\ntext\0"`  
+writes a string using its characters' ASCII values.
+a few escapes are currently supported: `\ " a b f n r t v 0`
+
+* `.asciiz "some\ntext"`  
+same as ascii, but with a null byte added to the end.
+
 ### Unimplemented
 
 * FLOAT: writes a list of 32-bit floating point numbers until end-of-line.
 this may not get implemented due to a lack of aliasing in vanilla Lua,
 and thus accuracy issues.
-
-* ASCII: writes a string using its characters' ASCII values.
-
-* ASCIIZ: same as ASCII, but with a null byte added to the end.
 
 * INCBIN: write an external binary file as-is at this position.

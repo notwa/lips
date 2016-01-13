@@ -1,5 +1,6 @@
-local insert = table.insert
 local floor = math.floor
+local format = string.format
+local insert = table.insert
 
 local data = require "lips.data"
 

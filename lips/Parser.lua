@@ -1,5 +1,5 @@
-local insert = table.insert
 local format = string.format
+local insert = table.insert
 
 local data = require "lips.data"
 local overrides = require "lips.overrides"
@@ -57,6 +57,15 @@ function Parser:number()
     return value
 end
 
+function Parser:string()
+    if self.tt ~= 'STRING' then
+        self:error('expected string')
+    end
+    local value = self.tok
+    self:advance()
+    return value
+end
+
 function Parser:directive()
     local name = self.tok
     self:advance()
@@ -84,13 +93,20 @@ function Parser:directive()
             self.dumper:add_directive(line, name, self:number())
         end
         self:expect_EOL()
-    elseif name == 'HEX' then
-        self:error('unimplemented')
     elseif name == 'INC' then
-        -- noop
+        -- noop, handled by lexer
+    elseif name == 'ASCII' or name == 'ASCIIZ' then
+        local bytes = self:string()
+        for i, number in ipairs(bytes) do
+            self.dumper:add_directive(line, 'BYTE', number)
+        end
+        if name == 'ASCIIZ' then
+            self.dumper:add_directive(line, 'BYTE', 0)
+        end
+        self:expect_EOL()
     elseif name == 'INCBIN' then
         self:error('unimplemented')
-    elseif name == 'FLOAT' or name == 'ASCII' or name == 'ASCIIZ' then
+    elseif name == 'FLOAT' then
         self:error('unimplemented')
     else
         self:error('unknown directive')
