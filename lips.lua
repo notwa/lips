@@ -4,7 +4,7 @@ local assembler = {
     _DESCRIPTION = 'Assembles MIPS assembly files for the R4300i CPU.',
     _URL = 'https://github.com/notwa/lips/',
     _LICENSE = [[
-        Copyright (C) 2015 Connor Olding
+        Copyright (C) 2015,2016 Connor Olding
 
         This program is licensed under the terms of the MIT License, and
         is distributed without any warranty.  You should have received a
@@ -12,14 +12,26 @@ local assembler = {
     ]],
 }
 
+local __ = {}
 local byte = string.byte
 local char = string.char
+local coroutine = coroutine
+local error = error
 local find = string.find
-local format = string.format
 local floor = math.floor
+local format = string.format
 local insert = table.insert
+local ipairs = ipairs
+local open = io.open
+local pairs = pairs
+local pcall = pcall
+local print = print
+local setmetatable = setmetatable
+local tonumber = tonumber
+local tostring = tostring
+local type = type
 
-local Class = function(inherit)
+local function Class(inherit)
     local class = {}
     local mt_obj = {__index = class}
     local mt_class = {
@@ -39,7 +51,7 @@ local function bitrange(x, lower, upper)
 end
 
 local function readfile(fn)
-    local f = io.open(fn, 'r')
+    local f = open(fn, 'r')
     if not f then
         error('could not open assembly file for reading: '..tostring(fn), 2)
     end
@@ -110,6 +122,7 @@ revtable(fpu_registers)
 revtable(all_registers)
 revtable(all_directives)
 
+-- alternate register names
 registers['ZERO'] = 0
 all_registers['ZERO'] = 0
 registers['S8'] = 30
@@ -178,8 +191,6 @@ local instructions = {
 
     JALR    = {0, 'ds', 's0d0C', 9},
 
-    MTHI    = {0, 's', 's000C', 17},
-    MTLO    = {0, 's', 's000C', 19},
     JR      = {0, 's', 's000C',  8},
 
     BREAK   = {0, '', '0000C', 13},
@@ -215,6 +226,9 @@ local instructions = {
 
     MFHI    = {0, 'd', '00d0C', 16},
     MFLO    = {0, 'd', '00d0C', 18},
+
+    MTHI    = {0, 's', 's000C', 17},
+    MTLO    = {0, 's', 's000C', 19},
 
     ADDI    = { 8, 'tsK', 'sti'},
     ADDIU   = { 9, 'tsK', 'sti'},
@@ -284,6 +298,8 @@ local instructions = {
     BLTZALL = { 1, 'sr', 'sCo', 18},
     BLTZL   = { 1, 'sr', 'sCo',  2},
 
+    -- coprocessor-related instructions
+
     TEQ     = {0, 'st', 'st00C', 52},
     TGE     = {0, 'st', 'st00C', 48},
     TGEU    = {0, 'st', 'st00C', 49},
@@ -291,14 +307,12 @@ local instructions = {
     TLTU    = {0, 'st', 'st00C', 51},
     TNE     = {0, 'st', 'st00C', 54},
 
-    ADD_D   = {17, 'DST', 'FTSDC', 0, fmt_double},
-    ADD_S   = {17, 'DST', 'FTSDC', 0, fmt_single},
-    DIV_D   = {17, 'DST', 'FTSDC', 3, fmt_double},
-    DIV_S   = {17, 'DST', 'FTSDC', 3, fmt_single},
-    MUL_D   = {17, 'DST', 'FTSDC', 2, fmt_double},
-    MUL_S   = {17, 'DST', 'FTSDC', 2, fmt_single},
-    SUB_D   = {17, 'DST', 'FTSDC', 1, fmt_double},
-    SUB_S   = {17, 'DST', 'FTSDC', 1, fmt_single},
+    TEQI    = {1, 'si', 'sCi', 12},
+    TGEI    = {1, 'si', 'sCi',  8},
+    TGEIU   = {1, 'si', 'sCi',  9},
+    TLTI    = {1, 'si', 'sCi', 10},
+    TLTIU   = {1, 'si', 'sCi', 11},
+    TNEI    = {1, 'si', 'sCi', 14},
 
     CFC1    = {17, 'tS', 'CtS00', 2},
     CTC1    = {17, 'tS', 'CtS00', 6},
@@ -313,6 +327,31 @@ local instructions = {
     LWC1    = {49, 'Tob', 'bTo'},
     SDC1    = {61, 'Tob', 'bTo'},
     SWC1    = {57, 'Tob', 'bTo'},
+
+    -- immediate limited to 3 bits?
+    CACHE   = {47, 'iob', 'bio'},
+
+    -- misuses 'F' to write the initial bit
+    ERET    = {16, '', 'F000C', 24, 16},
+    TLBP    = {16, '', 'F000C',  8, 16},
+    TLBR    = {16, '', 'F000C',  1, 16},
+    TLBWI   = {16, '', 'F000C',  2, 16},
+    TLBWR   = {16, '', 'F000C',  6, 16},
+
+    -- only one condition code on the R4300i?
+    BC1F    = {17, 'r', 'FCo', 0, 8},
+    BC1FL   = {17, 'r', 'FCo', 2, 8},
+    BC1T    = {17, 'r', 'FCo', 1, 8},
+    BC1TL   = {17, 'r', 'FCo', 3, 8},
+
+    ADD_D   = {17, 'DST', 'FTSDC', 0, fmt_double},
+    ADD_S   = {17, 'DST', 'FTSDC', 0, fmt_single},
+    DIV_D   = {17, 'DST', 'FTSDC', 3, fmt_double},
+    DIV_S   = {17, 'DST', 'FTSDC', 3, fmt_single},
+    MUL_D   = {17, 'DST', 'FTSDC', 2, fmt_double},
+    MUL_S   = {17, 'DST', 'FTSDC', 2, fmt_single},
+    SUB_D   = {17, 'DST', 'FTSDC', 1, fmt_double},
+    SUB_S   = {17, 'DST', 'FTSDC', 1, fmt_single},
 
     C_EQ_D  = {17, 'ST', 'FTS0C', 50, fmt_double},
     C_EQ_S  = {17, 'ST', 'FTS0C', 50, fmt_single},
@@ -383,30 +422,8 @@ local instructions = {
     TRUNC_W_D={17, 'DS', 'F0SDC', 13, fmt_double},
     TRUNC_W_S={17, 'DS', 'F0SDC', 13, fmt_double},
 
-    TEQI    = {1, 'si', 'sCi', 12},
-    TGEI    = {1, 'si', 'sCi',  8},
-    TGEIU   = {1, 'si', 'sCi',  9},
-    TLTI    = {1, 'si', 'sCi', 10},
-    TLTIU   = {1, 'si', 'sCi', 11},
-    TNEI    = {1, 'si', 'sCi', 14},
-
-    -- immediate limited to 3 bits?
-    CACHE   = {47, 'iob', 'bio'},
-
-    -- misuses 'F' to write the initial bit
-    ERET    = {16, '', 'F000C', 24, 16},
-    TLBP    = {16, '', 'F000C',  8, 16},
-    TLBR    = {16, '', 'F000C',  1, 16},
-    TLBWI   = {16, '', 'F000C',  2, 16},
-    TLBWR   = {16, '', 'F000C',  6, 16},
-
-    -- only one condition code on the R4300i?
-    BC1F    = {17, 'r', 'FCo', 0, 8},
-    BC1FL   = {17, 'r', 'FCo', 2, 8},
-    BC1T    = {17, 'r', 'FCo', 1, 8},
-    BC1TL   = {17, 'r', 'FCo', 3, 8},
-
     -- pseudo-instructions
+
     B       = {4, 'r', '00o'},          -- BEQ R0, R0, offset
     BAL     = {1, 'r', '0Co', 17},      -- BGEZAL R0, offset
     BEQZ    = {4, 'sr', 's0o'},         -- BEQ RS, R0, offset
@@ -420,37 +437,37 @@ local instructions = {
     SUBIU   = {9, 'tsk', 'sti'},        -- ADDIU RT, RS, -immediate
 
     -- ...that expand to multiple instructions
-    LI      = {}, -- only one instruction for values < 0x10000
-    LA      = {},
+    LI      = __, -- only one instruction for values < 0x10000
+    LA      = __,
 
     -- variable arguments
-    PUSH    = {},
-    POP     = {},
-    JPOP    = {},
+    PUSH    = __,
+    POP     = __,
+    JPOP    = __,
 
-    ABS     = {}, -- BGEZ NOP SUBU?
-    MUL     = {}, -- MULT MFLO
-    --DIV     = {}, -- 3 arguments
-    REM     = {}, -- 3 arguments
+    ABS     = __, -- BGEZ NOP SUBU?
+    MUL     = __, -- MULT MFLO
+    --DIV     = __, -- 3 arguments
+    REM     = __, -- 3 arguments
 
-    NAND    = {}, -- AND, NOT
-    NANDI   = {}, -- ANDI, NOT
-    NORI    = {}, -- ORI, NOT
-    ROL     = {}, -- SLL, SRL, OR
-    ROR     = {}, -- SRL, SLL, OR
+    NAND    = __, -- AND, NOT
+    NANDI   = __, -- ANDI, NOT
+    NORI    = __, -- ORI, NOT
+    ROL     = __, -- SLL, SRL, OR
+    ROR     = __, -- SRL, SLL, OR
 
-    SEQ     = {}, SEQI    = {}, SEQIU   = {}, SEQU    = {},
-    SGE     = {}, SGEI    = {}, SGEIU   = {}, SGEU    = {},
-    SGT     = {}, SGTI    = {}, SGTIU   = {}, SGTU    = {},
-    SLE     = {}, SLEI    = {}, SLEIU   = {}, SLEU    = {},
-    SNE     = {}, SNEI    = {}, SNEIU   = {}, SNEU    = {},
+    SEQ     = __, SEQI    = __, SEQIU   = __, SEQU    = __,
+    SGE     = __, SGEI    = __, SGEIU   = __, SGEU    = __,
+    SGT     = __, SGTI    = __, SGTIU   = __, SGTU    = __,
+    SLE     = __, SLEI    = __, SLEIU   = __, SLEU    = __,
+    SNE     = __, SNEI    = __, SNEIU   = __, SNEU    = __,
 
-                  BEQI    = {},
-                  BNEI    = {},
-    BGE     = {}, BGEI    = {},
-    BLE     = {}, BLEI    = {},
-    BLT     = {}, BLTI    = {},
-    BGT     = {}, BGTI    = {},
+                  BEQI    = __,
+                  BNEI    = __,
+    BGE     = __, BGEI    = __,
+    BLE     = __, BLEI    = __,
+    BLT     = __, BLTI    = __,
+    BGT     = __, BGTI    = __,
 }
 
 local all_instructions = {}
@@ -1550,9 +1567,8 @@ function Dumper:add_label(name)
 end
 
 function Dumper:add_bytes(line, ...)
-    local bs = {...}
-    local t
     local use_last = self.lastcommand and self.lastcommand.kind == 'bytes'
+    local t
     if use_last then
         t = self.lastcommand
     else
@@ -1561,7 +1577,7 @@ function Dumper:add_bytes(line, ...)
         t.size = 0
     end
     t.line = line
-    for _, b in ipairs(bs) do
+    for _, b in ipairs{...} do
         t.size = t.size + 1
         t[t.size] = b
     end
@@ -1639,7 +1655,7 @@ function Dumper:desym(tok)
         end
         return rel % 0x10000
     end
-    self:error('failed to desym')
+    self:error('failed to desym') -- internal error?
 end
 
 function Dumper:toval(tok)
@@ -1689,13 +1705,13 @@ function Dumper:toval(tok)
             return self:desym(tok)
         end
     end
-    self:error('invalid value')
+    self:error('invalid value') -- internal error?
 end
 
 function Dumper:validate(n, bits)
     local max = 2^bits
     if n == nil then
-        self:error('value is nil')
+        self:error('value is nil') -- internal error?
     end
     if n > max or n < 0 then
         self:error('value out of range')
@@ -1785,8 +1801,7 @@ function assembler.word_writer()
             if pos > max then
                 max = pos
             end
-        else
-            if max == -1 then return end
+        elseif max >= 0 then
             for i=0, max, 4 do
                 local a = buff[i+0] or '00'
                 local b = buff[i+1] or '00'
