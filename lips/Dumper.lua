@@ -93,11 +93,13 @@ function Dumper:add_directive(line, name, a, b)
         self:advance(0)
     elseif name == 'ALIGN' then
         t.kind = 'ahead'
-        local align = a*2
-        if align == 0 then
+        local align
+        if a == 0 then
             align = 4
-        elseif align < 0 then
+        elseif a < 0 then
             self:error('negative alignment')
+        else
+            align = 2^a
         end
         local temp = self.pos + align - 1
         t.skip = temp - (temp % align) - self.pos

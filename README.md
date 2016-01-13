@@ -113,13 +113,13 @@ be wary of potential alignment issues.
 writes a series of 32-bit numbers until end-of-line.
 
 * `.align [n] [fill]`  
-aligns the next datum to a `n*2` boundary using `fill` for spacing.
-if `n` is not given, 2 is implied.
-if `fill` is not given, 0 is implied.
+aligns the next datum to a `2**n` boundary using `fill` for spacing.
+if `n` is omitted, 2 is implied.
+if `fill` is omitted, 0 is implied.
 
 * `.skip {n} [fill]`  
 skips the next `n` bytes using `fill` for spacing.
-if `fill` is not given, no bytes are overwritten,
+if `fill` is omitted, no bytes are overwritten,
 and only the position is changed.
 
 * `.org {address}`  
