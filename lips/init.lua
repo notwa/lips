@@ -1,6 +1,4 @@
--- split lips.lua
-
-local assembler = {
+local lips = {
     _DESCRIPTION = 'Assembles MIPS assembly files for the R4300i CPU.',
     _URL = 'https://github.com/notwa/lips/',
     _LICENSE = [[
@@ -26,7 +24,7 @@ local function readfile(fn)
     return asm
 end
 
-function assembler.word_writer()
+function lips.word_writer()
     local buff = {}
     local max = -1
     return function(pos, b)
@@ -47,13 +45,13 @@ function assembler.word_writer()
     end
 end
 
-function assembler.assemble(fn_or_asm, writer, options)
+function lips.assemble(fn_or_asm, writer, options)
     -- assemble MIPS R4300i assembly code.
     -- if fn_or_asm contains a newline; treat as assembly, otherwise load file.
     -- returns error message on error, or nil on success.
     fn_or_asm = tostring(fn_or_asm)
     local default_writer = not writer
-    writer = writer or assembler.word_writer()
+    writer = writer or lips.word_writer()
     options = options or {}
 
     local function main()
@@ -83,7 +81,7 @@ function assembler.assemble(fn_or_asm, writer, options)
     end
 end
 
-return setmetatable(assembler, {
+return setmetatable(lips, {
     __call = function(self, ...)
         return self.assemble(...)
     end,
