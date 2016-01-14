@@ -69,36 +69,38 @@ end
 function Parser:directive()
     local name = self.tok
     self:advance()
-    local line = self.line
+    local function add(...)
+        self.dumper:add_directive(self.fn, self.line, ...)
+    end
     if name == 'ORG' then
-        self.dumper:add_directive(line, name, self:number())
+        add(name, self:number())
     elseif name == 'ALIGN' or name == 'SKIP' then
         if self:is_EOL() and name == 'ALIGN' then
-            self.dumper:add_directive(line, name, 0)
+            add(name, 0)
         else
             local size = self:number()
             if self:is_EOL() then
-                self.dumper:add_directive(line, name, size)
+                add(name, size)
             else
                 self:optional_comma()
-                self.dumper:add_directive(line, name, size, self:number())
+                add(name, size, self:number())
             end
             self:expect_EOL()
         end
     elseif name == 'BYTE' or name == 'HALFWORD' then
-        self.dumper:add_directive(line, name, self:number())
+        add(name, self:number())
         while not self:is_EOL() do
             self:advance()
             self:optional_comma()
-            self.dumper:add_directive(line, name, self:number())
+            add(name, self:number())
         end
         self:expect_EOL()
     elseif name == 'WORD' then -- allow labels in word directives
-        self.dumper:add_directive(line, name, self:const()[2])
+        add(name, self:const()[2])
         while not self:is_EOL() do
             self:advance()
             self:optional_comma()
-            self.dumper:add_directive(line, name, self:const()[2])
+            add(name, self:const()[2])
         end
         self:expect_EOL()
     elseif name == 'INC' then
@@ -106,10 +108,10 @@ function Parser:directive()
     elseif name == 'ASCII' or name == 'ASCIIZ' then
         local bytes = self:string()
         for i, number in ipairs(bytes) do
-            self.dumper:add_directive(line, 'BYTE', number)
+            add('BYTE', number)
         end
         if name == 'ASCIIZ' then
-            self.dumper:add_directive(line, 'BYTE', 0)
+            add('BYTE', 0)
         end
         self:expect_EOL()
     elseif name == 'INCBIN' then
@@ -246,7 +248,7 @@ function Parser:format_out_raw(outformat, first, args, const, formatconst)
     if f == nil then
         error('Internal Error: invalid output formatting string', 1)
     end
-    f(self.dumper, self.line, first, out[1], out[2], out[3], out[4], out[5])
+    f(self.dumper, self.fn, self.line, first, out[1], out[2], out[3], out[4], out[5])
 end
 
 function Parser:format_out(t, args)
@@ -311,12 +313,12 @@ function Parser:tokenize(asm)
     end)
 
     local function lex()
-        local t = {}
         local ok, a, b, c, d = coroutine.resume(routine)
         if not ok then
             a = a or 'Internal Error: lexer coroutine has stopped'
             error(a)
         end
+        local t = {}
         t.tt = a
         t.tok = b
         t.fn = c

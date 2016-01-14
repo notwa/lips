@@ -33,16 +33,16 @@ function Dumper:push_instruction(t)
     self:advance(4)
 end
 
-function Dumper:add_instruction_j(line, o, T)
-    self:push_instruction{line=line, o, T}
+function Dumper:add_instruction_j(fn, line, o, T)
+    self:push_instruction{fn=fn, line=line, o, T}
 end
 
-function Dumper:add_instruction_i(line, o, s, t, i)
-    self:push_instruction{line=line, o, s, t, i}
+function Dumper:add_instruction_i(fn, line, o, s, t, i)
+    self:push_instruction{fn=fn, line=line, o, s, t, i}
 end
 
-function Dumper:add_instruction_r(line, o, s, t, d, f, c)
-    self:push_instruction{line=line, o, s, t, d, f, c}
+function Dumper:add_instruction_r(fn, line, o, s, t, d, f, c)
+    self:push_instruction{fn=fn, line=line, o, s, t, d, f, c}
 end
 
 function Dumper:add_label(name)
@@ -58,6 +58,8 @@ function Dumper:add_bytes(line, ...)
         t = {}
         t.kind = 'bytes'
         t.size = 0
+        t.fn = self.fn
+        t.line = self.line
     end
     t.line = line
     for _, b in ipairs{...} do
@@ -70,9 +72,12 @@ function Dumper:add_bytes(line, ...)
     self:advance(t.size)
 end
 
-function Dumper:add_directive(line, name, a, b)
+function Dumper:add_directive(fn, line, name, a, b)
+    self.fn = fn
+    self.line = line
     local t = {}
-    t.line = line
+    t.fn = self.fn
+    t.line = self.line
     if name == 'BYTE' then
         self:add_bytes(line, a % 0x100)
     elseif name == 'HALFWORD' then
@@ -124,7 +129,6 @@ function Dumper:add_directive(line, name, a, b)
 end
 
 function Dumper:desym(tok)
-    -- FIXME: errors can give wrong filename
     if type(tok[2]) == 'number' then
         return tok[2]
     elseif tok[1] == 'LABELSYM' then
@@ -254,9 +258,9 @@ end
 function Dumper:dump()
     self.pos = self.options.offset or 0
     for i, t in ipairs(self.commands) do
-        if t.line == nil then
-            error('Internal Error: no line number available')
-        end
+        assert(t.fn, 'Internal Error: no file name available')
+        assert(t.line, 'Internal Error: no line number available')
+        self.fn = t.fn
         self.line = t.line
         if t.kind == 'instruction' then
             local uw, lw = self:dump_instruction(t)
