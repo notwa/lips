@@ -154,8 +154,8 @@ function Lexer:lex_hex(yield)
     local entered = false
     while true do
         if self.chr == '\n' then
-            self:nextc()
             yield('EOL', '\n')
+            self:nextc()
         elseif self.ord == self.EOF then
             self:error('unexpected EOF; incomplete hex directive')
         elseif self.chr == ';' then
@@ -206,8 +206,8 @@ end
 function Lexer:lex_block_comment(yield)
     while true do
         if self.chr == '\n' then
-            self:nextc()
             yield('EOL', '\n')
+            self:nextc()
         elseif self.ord == self.EOF then
             self:error('unexpected EOF; incomplete block comment')
         elseif self.chrchr == '*/' then
@@ -230,8 +230,8 @@ function Lexer:lex_string(yield)
     while true do
         if self.chr == '\n' then
             self:error('unimplemented')
-            self:nextc()
             yield('EOL', '\n')
+            self:nextc()
         elseif self.ord == self.EOF then
             self:nextc()
             self:error('unexpected EOF; incomplete string')
@@ -288,8 +288,8 @@ function Lexer:lex(_yield)
     end
     while true do
         if self.chr == '\n' then
-            self:nextc()
             yield('EOL', '\n')
+            self:nextc()
         elseif self.ord == self.EOF then
             yield('EOF', self.EOF)
             break

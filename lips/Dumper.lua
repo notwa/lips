@@ -124,7 +124,7 @@ function Dumper:add_directive(line, name, a, b)
 end
 
 function Dumper:desym(tok)
-    -- FIXME: errors can give wrong filename, also off by one
+    -- FIXME: errors can give wrong filename
     if type(tok[2]) == 'number' then
         return tok[2]
     elseif tok[1] == 'LABELSYM' then

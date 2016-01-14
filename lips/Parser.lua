@@ -258,10 +258,8 @@ function Parser:instruction()
     local h = data.instructions[name]
     self:advance()
 
-    -- FIXME: errors thrown here probably have the wrong line number (+1)
-
     if h == nil then
-        self:error('undefined instruction')
+        error('Internal Error: undefined instruction')
     elseif overrides[name] then
         overrides[name](self, name)
     elseif h[2] == 'tob' then -- TODO: or h[2] == 'Tob' then
