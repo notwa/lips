@@ -68,10 +68,18 @@ function Muncher:register(t)
 end
 
 function Muncher:deref()
-    if self.tt ~= 'DEREF' then
+    if self.tt ~= 'OPEN' then
+        self:error('expected opening parenthesis for dereferencing')
+    end
+    self:advance()
+    if self.tt ~= 'REG' then
         self:error('expected register to dereference')
     end
     local reg = self.tok
+    self:advance()
+    if self.tt ~= 'CLOSE' then
+        self:error('expected closing parenthesis for dereferencing')
+    end
     self:advance()
     return reg
 end

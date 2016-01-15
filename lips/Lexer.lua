@@ -318,18 +318,14 @@ function Lexer:lex(_yield)
             end
             self:nextc()
             yield('DEF', buff)
+        elseif self.chr == ']' then
+            self:error('unmatched closing bracket')
         elseif self.chr == '(' then
             self:nextc()
-            local buff = self:read_chars('[%w_]')
-            if self.chr ~= ')' then
-                self:error('invalid register name')
-            end
+            yield('OPEN', '(')
+        elseif self.chr == ')' then
             self:nextc()
-            local up = buff:upper()
-            if not data.all_registers[up] then
-                self:error('not a register')
-            end
-            yield('DEREF', up)
+            yield('CLOSE', ')')
         elseif self.chr == '.' then
             self:nextc()
             local buff = self:read_chars('[%w]')
@@ -373,10 +369,6 @@ function Lexer:lex(_yield)
                 end
                 yield('LABELSYM', buff)
             end
-        elseif self.chr == ']' then
-            self:error('unmatched closing bracket')
-        elseif self.chr == ')' then
-            self:error('unmatched closing parenthesis')
         elseif self.chr == '+' or self.chr == '-' then
             local sign_chr = self.chr
             local sign = sign_chr == '+' and 1 or -1

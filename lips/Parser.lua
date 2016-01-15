@@ -182,7 +182,7 @@ function Parser:instruction()
         local args = {}
         args.rt = self:register()
         self:optional_comma()
-        if self.tt == 'DEREF' then
+        if self.tt == 'OPEN' then
             args.offset = {'NUM', 0}
             args.base = self:deref()
         else -- NUM or LABELSYM
