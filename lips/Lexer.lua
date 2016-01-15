@@ -3,9 +3,9 @@ local char = string.char
 local find = string.find
 local format = string.format
 local insert = table.insert
-local open = io.open
 
 local data = require "lips.data"
+local util = require "lips.util"
 
 local simple_escapes = {
     ['0']   = 0x00,
@@ -20,17 +20,7 @@ local simple_escapes = {
     ['v']   = 0x0B,
 }
 
-local function readfile(fn)
-    local f = open(fn, 'r')
-    if not f then
-        error('could not open assembly file for reading: '..tostring(fn), 2)
-    end
-    local asm = f:read('*a')
-    f:close()
-    return asm
-end
-
-local Lexer = require("lips.Class")()
+local Lexer = util.Class()
 function Lexer:init(asm, fn, options)
     self.asm = asm
     self.fn = fn or '(string)'
@@ -278,7 +268,7 @@ function Lexer:lex_include(_yield)
     if self.options.path then
         fn = self.options.path..fn
     end
-    local sublexer = Lexer(readfile(fn), fn, self.options)
+    local sublexer = Lexer(util.readfile(fn), fn, self.options)
     sublexer:lex(_yield)
 end
 
@@ -348,6 +338,10 @@ function Lexer:lex(_yield)
             self:nextc()
             local buff = self:read_chars('[%w_]')
             yield('DEFSYM', buff)
+        elseif self.chr == '%' then
+            self:nextc()
+            local call = self:read_chars('[%w_]')
+            yield('SPECIAL', call)
         elseif self.chr:find('[%a_]') then
             local buff = self:read_chars('[%w_.]')
             local up = buff:upper()

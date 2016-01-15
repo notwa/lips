@@ -10,19 +10,8 @@ local lips = {
     ]],
 }
 
-local open = io.open
-
+local util = require "lips.util"
 local Parser = require "lips.Parser"
-
-local function readfile(fn)
-    local f = open(fn, 'r')
-    if not f then
-        error('could not open assembly file for reading: '..tostring(fn), 2)
-    end
-    local asm = f:read('*a')
-    f:close()
-    return asm
-end
 
 function lips.word_writer()
     local buff = {}
@@ -61,7 +50,7 @@ function lips.assemble(fn_or_asm, writer, options)
             asm = fn_or_asm
         else
             fn = fn_or_asm
-            asm = readfile(fn)
+            asm = util.readfile(fn)
             options.path = fn:match(".*/")
         end
 

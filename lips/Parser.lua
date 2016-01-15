@@ -1,13 +1,17 @@
 local insert = table.insert
 
 local data = require "lips.data"
+local util = require "lips.util"
 local overrides = require "lips.overrides"
 local Lexer = require "lips.Lexer"
 local Dumper = require "lips.Dumper"
 local Muncher = require "lips.Muncher"
 local Preproc = require "lips.Preproc"
 
-local Parser = require("lips.Class")(Muncher)
+local construct = util.construct
+local withflag = util.withflag
+
+local Parser = util.Class(Muncher)
 function Parser:init(writer, fn, options)
     self.fn = fn or '(string)'
     self.main_fn = self.fn
@@ -96,21 +100,21 @@ function Parser:format_in(informat)
         elseif c == 'Z' and not args.rt then
             args.rt = self:register(data.sys_registers)
         elseif c == 'o' and not args.offset then
-            args.offset = {'SIGNED', self:const()}
+            args.offset = withflag(self:const(), 'signed')
         elseif c == 'r' and not args.offset then
-            args.offset = {'SIGNED', self:const('relative')}
+            args.offset = withflag(self:const('relative'), 'signed')
         elseif c == 'i' and not args.immediate then
             args.immediate = self:const(nil, 'no label')
         elseif c == 'I' and not args.index then
-            args.index = {'INDEX', self:const()}
+            args.index = withflag(self:const(), 'index')
         elseif c == 'k' and not args.immediate then
-            args.immediate = {'NEGATE', self:const(nil, 'no label')}
+            args.immediate = withflag(self:const(nil, 'no label'), 'negate')
         elseif c == 'K' and not args.immediate then
-            args.immediate = {'SIGNED', self:const(nil, 'no label')}
+            args.immediate = withflag(self:const(nil, 'no label'), 'signed')
         elseif c == 'b' and not args.base then
             args.base = self:deref()
         else
-            error('Internal Error: invalid input formatting string', 1)
+            error('Internal Error: invalid input formatting string')
         end
         if c2:find('[dstDSTorIikKXYZ]') then
             self:optional_comma()
@@ -129,36 +133,36 @@ function Parser:format_out_raw(outformat, first, args, const, formatconst)
     for i=1,#outformat do
         local c = outformat:sub(i, i)
         if c == 'd' then
-            out[#out+1] = args.rd
+            out[#out+1] = construct(args.rd)
         elseif c == 's' then
-            out[#out+1] = args.rs
+            out[#out+1] = construct(args.rs)
         elseif c == 't' then
-            out[#out+1] = args.rt
+            out[#out+1] = construct(args.rt)
         elseif c == 'D' then
-            out[#out+1] = args.fd
+            out[#out+1] = construct(args.fd)
         elseif c == 'S' then
-            out[#out+1] = args.fs
+            out[#out+1] = construct(args.fs)
         elseif c == 'T' then
-            out[#out+1] = args.ft
+            out[#out+1] = construct(args.ft)
         elseif c == 'o' then
-            out[#out+1] = args.offset
+            out[#out+1] = construct(args.offset)
         elseif c == 'i' then
-            out[#out+1] = args.immediate
+            out[#out+1] = construct(args.immediate)
         elseif c == 'I' then
-            out[#out+1] = args.index
+            out[#out+1] = construct(args.index)
         elseif c == 'b' then
-            out[#out+1] = args.base
+            out[#out+1] = construct(args.base)
         elseif c == '0' then
-            out[#out+1] = 0
+            out[#out+1] = construct(0)
         elseif c == 'C' then
-            out[#out+1] = const
+            out[#out+1] = construct(const)
         elseif c == 'F' then
-            out[#out+1] = formatconst
+            out[#out+1] = construct(formatconst)
         end
     end
     local f = lookup[#outformat]
     if f == nil then
-        error('Internal Error: invalid output formatting string', 1)
+        error('Internal Error: invalid output formatting string')
     end
     f(self.dumper, self.fn, self.line, first, out[1], out[2], out[3], out[4], out[5])
 end
@@ -183,15 +187,15 @@ function Parser:instruction()
         args.rt = self:register()
         self:optional_comma()
         if self.tt == 'OPEN' then
-            args.offset = {'NUM', 0}
+            args.offset = 0
             args.base = self:deref()
         else -- NUM or LABELSYM
             local lui_args = {}
             local addu_args = {}
             local o = self:const()
-            args.offset = {'LOWER', o}
+            args.offset = withflag({o[1], o[2]}, 'portion', 'lower')
             if o[1] == 'LABELSYM' or o[2] >= 0x80000000 then
-                lui_args.immediate = {'UPPEROFF', o}
+                lui_args.immediate = withflag({o[1], o[2]}, 'portion', 'upperoff')
                 lui_args.rt = 'AT'
                 self:format_out(lui, lui_args)
                 if not self:is_EOL() then
@@ -246,6 +250,8 @@ function Parser:tokenize(asm)
 
     local preproc = Preproc(self.options)
     self.tokens = preproc:process(tokens)
+
+    assert(#self.tokens > 0, 'Internal Error: no tokens after preprocessing')
 end
 
 function Parser:parse(asm)

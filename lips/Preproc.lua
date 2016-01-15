@@ -1,8 +1,10 @@
 local insert = table.insert
 
+local data = require "lips.data"
+local util = require "lips.util"
 local Muncher = require "lips.Muncher"
 
-local Preproc = require("lips.Class")(Muncher)
+local Preproc = util.Class(Muncher)
 function Preproc:init(options)
     self.options = options or {}
 end
@@ -87,6 +89,47 @@ function Preproc:process(tokens)
             if seen ~= rel then
                 self:error('could not find appropriate relative label')
             end
+        end
+    end
+
+    self.tokens = new_tokens
+    new_tokens = {}
+
+    -- third pass: resolve specials
+    self.i = 0
+    while self.i < #self.tokens do
+        local t = self:advance()
+        self.fn = t.fn
+        self.line = t.line
+        if t.tt == 'SPECIAL' then
+            local name, args = self:special()
+            -- TODO: split to its own file, not unlike overrides.lua
+            if name == 'hi' then
+                if #args ~= 1 then
+                    self:error('%hi expected exactly one argument')
+                end
+                --local tnew = {fn=t.fn, line=t.line, tt='UPPEROFF', tok=args[1]}
+                self:error('unimplemented special')
+                insert(new_tokens, tnew)
+            elseif name == 'up' then
+                if #args ~= 1 then
+                    self:error('%up expected exactly one argument')
+                end
+                --local tnew = {fn=t.fn, line=t.line, tt='UPPER', tok=args[1]}
+                self:error('unimplemented special')
+                insert(new_tokens, tnew)
+            elseif name == 'lo' then
+                if #args ~= 1 then
+                    self:error('%lo expected exactly one argument')
+                end
+                self:error('unimplemented special')
+                --local tnew = {fn=t.fn, line=t.line, tt='LOWER', tok=args[1]}
+                insert(new_tokens, tnew)
+            else
+                self:error('unknown special')
+            end
+        else
+            insert(new_tokens, t)
         end
     end
 

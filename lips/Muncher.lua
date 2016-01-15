@@ -1,7 +1,19 @@
 local format = string.format
+local insert = table.insert
 
 local data = require "lips.data"
-local Muncher = require("lips.Class")()
+local util = require "lips.util"
+
+local arg_types = {
+    NUM = true,
+    REG = true,
+    DEFSYM = true,
+    LABELSYM = true,
+    RELLABELSYM = true,
+}
+
+local Muncher = util.Class()
+-- no base init method
 
 function Muncher:error(msg)
     error(format('%s:%d: Error: %s', self.fn, self.line, msg), 2)
@@ -97,6 +109,38 @@ function Muncher:const(relative, no_label)
     local t = {self.tt, self.tok}
     self:advance()
     return t
+end
+
+function Muncher:special()
+    if self.tt ~= 'SPECIAL' then
+        self:error('expected special name to call')
+    end
+    local name = self.tok
+    self:advance()
+    if self.tt ~= 'OPEN' then
+        self:error('expected opening parenthesis for special call')
+    end
+
+    local args = {}
+    while true do
+        local arg = self:advance()
+        if not arg_types[arg.tt] then
+            self:error('invalid argument type')
+        else
+            self:advance()
+        end
+        if self.tt == 'SEP' then
+            insert(args, arg)
+        elseif self.tt == 'CLOSE' then
+            insert(args, arg)
+            self:advance()
+            break
+        else
+            self:error('unexpected token in argument list')
+        end
+    end
+
+    return name, args
 end
 
 return Muncher

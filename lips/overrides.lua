@@ -1,7 +1,10 @@
 local insert = table.insert
 
 local data = require "lips.data"
+local util = require "lips.util"
+
 local instructions = data.instructions
+local withflag = util.withflag
 
 local overrides = {}
 -- note: "self" is an instance of Parser
@@ -24,19 +27,19 @@ function overrides.LI(self, name)
     im[2] = im[2] % 0x100000000
     if im[2] >= 0x10000 and im[2] <= 0xFFFF8000 then
         args.rs = args.rt
-        args.immediate = {'UPPER', im}
+        args.immediate = withflag(im, 'portion', 'upper')
         self:format_out(lui, args)
         if im[2] % 0x10000 ~= 0 then
-            args.immediate = {'LOWER', im}
+            args.immediate = withflag(im, 'portion', 'lower')
             self:format_out(ori, args)
         end
     elseif im[2] >= 0x8000 and im[2] < 0x10000 then
         args.rs = 'R0'
-        args.immediate = {'LOWER', im}
+        args.immediate = withflag(im, 'portion', 'lower')
         self:format_out(ori, args)
     else
         args.rs = 'R0'
-        args.immediate = {'LOWER', im}
+        args.immediate = withflag(im, 'portion', 'lower')
         self:format_out(addiu, args)
     end
 end
@@ -50,9 +53,9 @@ function overrides.LA(self, name)
     local im = self:const()
 
     args.rs = args.rt
-    args.immediate = {'UPPEROFF', im}
+    args.immediate = withflag(im, 'portion', 'upperoff')
     self:format_out(lui, args)
-    args.immediate = {'LOWER', im}
+    args.immediate = withflag(im, 'portion', 'lower')
     self:format_out(addiu, args)
 end
 
@@ -84,14 +87,14 @@ function overrides.PUSH(self, name)
     if name == 'PUSH' then
         args.rt = 'SP'
         args.rs = 'SP'
-        args.immediate = {'NEGATE', {'NUM', #stack*4}}
+        args.immediate = withflag(#stack*4, 'negate')
         self:format_out(addi, args)
     end
     args.base = 'SP'
     for i, r in ipairs(stack) do
         args.rt = r
         if r ~= '' then
-            args.offset = {'NUM', (i - 1)*4}
+            args.offset = (i - 1)*4
             self:format_out(w, args)
         end
     end
@@ -102,7 +105,7 @@ function overrides.PUSH(self, name)
     if name == 'POP' or name == 'JPOP' then
         args.rt = 'SP'
         args.rs = 'SP'
-        args.immediate = {'NUM', #stack*4}
+        args.immediate = #stack*4
         self:format_out(addi, args)
     end
 end
@@ -175,7 +178,7 @@ function overrides.ROL(self, name)
     end
     self:format_out(sll, args)
     args.rd = 'AT'
-    args.immediate = {'NUM', 32 - args.immediate[2]}
+    args.immediate = 32 - args.immediate[2]
     self:format_out(srl, args)
     args.rd = left
     args.rs = left
@@ -202,7 +205,7 @@ function overrides.ROR(self, name)
     end
     self:format_out(srl, args)
     args.rd = 'AT'
-    args.immediate = {'NUM', 32 - args.immediate[2]}
+    args.immediate = 32 - args.immediate[2]
     self:format_out(sll, args)
     args.rd = right
     args.rs = right
@@ -238,7 +241,7 @@ function overrides.BEQI(self, name)
     self:optional_comma()
     args.immediate = self:const()
     self:optional_comma()
-    args.offset = {'SIGNED', self:const('relative')}
+    args.offset = withflag(self:const('relative'), 'signed')
 
     if reg == 'AT' then
         self:error('register cannot be AT in this pseudo-instruction')
@@ -261,7 +264,7 @@ function overrides.BLTI(self, name)
     self:optional_comma()
     args.immediate = self:const()
     self:optional_comma()
-    args.offset = {'SIGNED', self:const('relative')}
+    args.offset = withflag(self:const('relative'), 'signed')
 
     if args.rs == 'AT' then
         self:error('register cannot be AT in this pseudo-instruction')
@@ -287,7 +290,7 @@ function overrides.BLEI(self, name)
     self:optional_comma()
     args.immediate = self:const()
     self:optional_comma()
-    local offset = {'SIGNED', self:const('relative')}
+    local offset = withflag(self:const('relative'), 'signed')
 
     if reg == 'AT' then
         self:error('register cannot be AT in this pseudo-instruction')

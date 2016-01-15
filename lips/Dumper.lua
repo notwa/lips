@@ -3,12 +3,11 @@ local format = string.format
 local insert = table.insert
 
 local data = require "lips.data"
+local util = require "lips.util"
 
-local function bitrange(x, lower, upper)
-    return floor(x/2^lower) % 2^(upper - lower + 1)
-end
+local bitrange = util.bitrange
 
-local Dumper = require("lips.Class")()
+local Dumper = util.Class()
 function Dumper:init(writer, fn, options)
     self.writer = writer
     self.fn = fn or '(string)'
@@ -131,6 +130,9 @@ end
 function Dumper:desym(tok)
     if type(tok[2]) == 'number' then
         return tok[2]
+    elseif tok[1] == 'REG' then
+        assert(data.all_registers[tok[2]], 'Internal Error: unknown register')
+        return data.registers[tok[2]] or data.fpu_registers[tok[2]] or data.sys_registers[tok[2]]
     elseif tok[1] == 'LABELSYM' then
         local label = self.labels[tok[2]]
         if label == nil then
@@ -154,53 +156,40 @@ function Dumper:desym(tok)
 end
 
 function Dumper:toval(tok)
-    if tok == nil then
-        self:error('nil value')
-    elseif type(tok) == 'number' then
-        return tok
-    elseif data.all_registers[tok] then
-        return data.registers[tok] or data.fpu_registers[tok] or data.sys_registers[tok]
+    assert(type(tok) == 'table', 'Internal Error: invalid value')
+    assert(#tok == 2, 'Internal Error: invalid token')
+
+    local val = self:desym(tok)
+
+    if tok.index then
+        val = val % 0x80000000
+        val = floor(val/4)
     end
-    if type(tok) == 'table' then
-        if #tok ~= 2 then
-            self:error('invalid token')
-        end
-        if tok[1] == 'UPPER' then
-            local val = self:desym(tok[2])
-            return bitrange(val, 16, 31)
-        elseif tok[1] == 'LOWER' then
-            local val = self:desym(tok[2])
-            return bitrange(val, 0, 15)
-        elseif tok[1] == 'UPPEROFF' then
-            local val = self:desym(tok[2])
-            local upper = bitrange(val, 16, 31)
-            local lower = bitrange(val, 0, 15)
-            if lower >= 0x8000 then
-                -- accommodate for offsets being signed
-                upper = (upper + 1) % 0x10000
-            end
-            return upper
-        elseif tok[1] == 'SIGNED' then
-            local val = self:desym(tok[2])
-            if val >= 0x10000 or val < -0x8000 then
-                self:error('value out of range')
-            end
-            return val % 0x10000
-        elseif tok[1] == 'NEGATE' then
-            local val = -self:desym(tok[2])
-            if val >= 0x10000 or val < -0x8000 then
-                self:error('value out of range')
-            end
-            return val % 0x10000
-        elseif tok[1] == 'INDEX' then
-            local val = self:desym(tok[2]) % 0x80000000
-            val = floor(val/4)
-            return val
-        else
-            return self:desym(tok)
-        end
+    if tok.negate then
+        val = -val
     end
-    self:error('invalid value') -- internal error?
+    if tok.negate or tok.signed then
+        if val >= 0x10000 or val < -0x8000 then
+            self:error('value out of range')
+        end
+        val = val % 0x10000
+    end
+
+    if tok.portion == 'upper' then
+        val = bitrange(val, 16, 31)
+    elseif tok.portion == 'lower' then
+        val = bitrange(val, 0, 15)
+    elseif tok.portion == 'upperoff' then
+        local upper = bitrange(val, 16, 31)
+        local lower = bitrange(val, 0, 15)
+        if lower >= 0x8000 then
+            -- accommodate for offsets being signed
+            upper = (upper + 1) % 0x10000
+        end
+        val = upper
+    end
+
+    return val
 end
 
 function Dumper:validate(n, bits)
@@ -249,7 +238,7 @@ function Dumper:dump_instruction(t)
         lw = lw + self:valvar(t[5], 5)*0x40
         lw = lw + self:valvar(t[6], 6)
     else
-        error('Internal Error: unknown n-size', 1)
+        error('Internal Error: unknown n-size')
     end
 
     return uw, lw
