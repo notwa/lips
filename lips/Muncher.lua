@@ -14,7 +14,7 @@ function Muncher:advance()
     self.tok = t.tok
     self.fn = t.fn
     self.line = t.line
-    return t.tt, t.tok
+    return t
 end
 
 function Muncher:is_EOL()

@@ -260,9 +260,6 @@ function Parser:parse(asm)
         elseif self.tt == 'EOL' then
             -- empty line
             self:advance()
-        elseif self.tt == 'DEF' then
-            self:advance()
-            self:advance()
         elseif self.tt == 'DIR' then
             self:directive()
         elseif self.tt == 'LABEL' then

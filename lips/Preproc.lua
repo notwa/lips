@@ -14,40 +14,45 @@ function Preproc:process(tokens)
     local plus_labels = {} -- constructed forwards
     local minus_labels = {} -- constructed backwards
 
-    -- first pass: collect tokens, constants, and relative labels.
+    -- first pass: resolve defines, collect relative labels
+    local new_tokens = {}
     self.i = 0
     while self.i < #self.tokens do
-        local tt, tok = self:advance()
-        if tt == 'DEF' then
-            local tt2, tok2 = self:advance()
-            if tt2 ~= 'NUM' then
+        local t = self:advance()
+        if t.tt == nil then
+            error('Internal Error: missing token')
+        elseif t.tt == 'DEF' then
+            local t2 = self:advance()
+            if t2.tt ~= 'NUM' then
                 self:error('expected number for define')
             end
-            defines[tok] = tok2
-        elseif tt == 'RELLABEL' then
-            if tok == '+' then
-                insert(plus_labels, self.i)
-            elseif tok == '-' then
-                insert(minus_labels, 1, self.i)
+            defines[t.tok] = t2.tok
+        elseif t.tt == 'DEFSYM' then
+            local tt = 'NUM'
+            local tok = defines[t.tok]
+            if tok == nil then
+                self:error('undefined define') -- uhhh nice wording
+            end
+            insert(new_tokens, {fn=t.fn, line=t.line, tt=tt, tok=tok})
+        elseif t.tt == 'RELLABEL' then
+            if t.tok == '+' then
+                insert(plus_labels, #new_tokens + 1)
+            elseif t.tok == '-' then
+                insert(minus_labels, 1, #new_tokens + 1)
             else
                 error('Internal Error: unexpected token for relative label')
             end
-        elseif tt == nil then
-            error('Internal Error: missing token')
+            insert(new_tokens, t)
+        else
+            insert(new_tokens, t)
         end
     end
 
-    -- resolve defines and relative labels
-    for i, t in ipairs(self.tokens) do
+    -- second pass: resolve relative labels
+    for i, t in ipairs(new_tokens) do
         self.fn = t.fn
         self.line = t.line
-        if t.tt == 'DEFSYM' then
-            t.tt = 'NUM'
-            t.tok = defines[t.tok]
-            if t.tok == nil then
-                self:error('undefined define') -- uhhh nice wording
-            end
-        elseif t.tt == 'RELLABEL' then
+        if t.tt == 'RELLABEL' then
             t.tt = 'LABEL'
             -- exploits the fact that user labels can't begin with a number
             t.tok = tostring(i)
@@ -78,11 +83,14 @@ function Preproc:process(tokens)
                     end
                 end
             end
+
             if seen ~= rel then
                 self:error('could not find appropriate relative label')
             end
         end
     end
+
+    self.tokens = new_tokens
 
     return self.tokens
 end
