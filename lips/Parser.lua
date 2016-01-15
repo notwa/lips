@@ -1,69 +1,18 @@
-local format = string.format
 local insert = table.insert
 
 local data = require "lips.data"
 local overrides = require "lips.overrides"
-local Dumper = require "lips.Dumper"
 local Lexer = require "lips.Lexer"
+local Dumper = require "lips.Dumper"
+local Muncher = require "lips.Muncher"
+local Preproc = require "lips.Preproc"
 
-local Parser = require("lips.Class")()
+local Parser = require("lips.Class")(Muncher)
 function Parser:init(writer, fn, options)
     self.fn = fn or '(string)'
     self.main_fn = self.fn
     self.options = options or {}
     self.dumper = Dumper(writer, fn, options)
-    self.defines = {}
-end
-
-function Parser:error(msg)
-    error(format('%s:%d: Error: %s', self.fn, self.line, msg), 2)
-end
-
-function Parser:advance()
-    self.i = self.i + 1
-    local t = self.tokens[self.i]
-    self.tt = t.tt
-    self.tok = t.tok
-    self.fn = t.fn
-    self.line = t.line
-    return t.tt, t.tok
-end
-
-function Parser:is_EOL()
-    return self.tt == 'EOL' or self.tt == 'EOF'
-end
-
-function Parser:expect_EOL()
-    if self:is_EOL() then
-        self:advance()
-        return
-    end
-    self:error('expected end of line')
-end
-
-function Parser:optional_comma()
-    if self.tt == 'SEP' and self.tok == ',' then
-        self:advance()
-        return true
-    end
-end
-
-function Parser:number()
-    if self.tt ~= 'NUM' then
-        self:error('expected number')
-    end
-    local value = self.tok
-    self:advance()
-    return value
-end
-
-function Parser:string()
-    if self.tt ~= 'STRING' then
-        self:error('expected string')
-    end
-    local value = self.tok
-    self:advance()
-    return value
 end
 
 function Parser:directive()
@@ -121,43 +70,6 @@ function Parser:directive()
     else
         self:error('unknown directive')
     end
-end
-
-function Parser:register(t)
-    t = t or data.registers
-    if self.tt ~= 'REG' then
-        self:error('expected register')
-    end
-    local reg = self.tok
-    if not t[reg] then
-        self:error('wrong type of register')
-    end
-    self:advance()
-    return reg
-end
-
-function Parser:deref()
-    if self.tt ~= 'DEREF' then
-        self:error('expected register to dereference')
-    end
-    local reg = self.tok
-    self:advance()
-    return reg
-end
-
-function Parser:const(relative, no_label)
-    if self.tt ~= 'NUM' and self.tt ~= 'LABELSYM' then
-        self:error('expected constant')
-    end
-    if no_label and self.tt == 'LABELSYM' then
-        self:error('labels are not allowed here')
-    end
-    if relative and self.tt == 'LABELSYM' then
-        self.tt = 'LABELREL'
-    end
-    local t = {self.tt, self.tok}
-    self:advance()
-    return t
 end
 
 function Parser:format_in(informat)
@@ -304,7 +216,6 @@ function Parser:instruction()
 end
 
 function Parser:tokenize(asm)
-    self.tokens = {}
     self.i = 0
 
     local routine = coroutine.create(function()
@@ -312,103 +223,29 @@ function Parser:tokenize(asm)
         lexer:lex(coroutine.yield)
     end)
 
-    local function lex()
+    local tokens = {}
+    while true do
         local ok, a, b, c, d = coroutine.resume(routine)
         if not ok then
             a = a or 'Internal Error: lexer coroutine has stopped'
             error(a)
         end
+        assert(a, 'Internal Error: missing token')
+
         local t = {}
         t.tt = a
         t.tok = b
         t.fn = c
         t.line = d
-        insert(self.tokens, t)
-        return t.tt, t.tok, t.fn, t.line
-    end
+        insert(tokens, t)
 
-    -- first pass: collect tokens, constants, and relative labels.
-    -- can't do more because instruction size can depend on a constant's size
-    -- and labels depend on instruction size.
-    -- note however, instruction size does not depend on label size.
-    -- this would cause a recursive problem to solve,
-    -- which is too much for our simple assembler.
-    local plus_labels = {} -- constructed forwards
-    local minus_labels = {} -- constructed backwards
-    while true do
-        local tt, tok, fn, line = lex()
-        self.fn = fn
-        self.line = line
-        if tt == 'DEF' then
-            local tt2, tok2 = lex()
-            if tt2 ~= 'NUM' then
-                self:error('expected number for define')
-            end
-            self.defines[tok] = tok2
-        elseif tt == 'RELLABEL' then
-            if tok == '+' then
-                insert(plus_labels, #self.tokens)
-            elseif tok == '-' then
-                insert(minus_labels, 1, #self.tokens)
-            else
-                error('Internal Error: unexpected token for relative label', 1)
-            end
-        elseif tt == 'EOL' then
-            -- noop
-        elseif tt == 'EOF' then
-            if fn == self.main_fn then
-                break
-            end
-        elseif tt == nil then
-            error('Internal Error: missing token', 1)
+        if t.tt == 'EOF' and t.fn == self.main_fn then
+            break
         end
     end
 
-    -- resolve defines and relative labels
-    for i, t in ipairs(self.tokens) do
-        self.fn = t.fn
-        self.line = t.line
-        if t.tt == 'DEFSYM' then
-            t.tt = 'NUM'
-            t.tok = self.defines[t.tok]
-            if t.tok == nil then
-                self:error('undefined define') -- uhhh nice wording
-            end
-        elseif t.tt == 'RELLABEL' then
-            t.tt = 'LABEL'
-            -- exploits the fact that user labels can't begin with a number
-            t.tok = tostring(i)
-        elseif t.tt == 'RELLABELSYM' then
-            t.tt = 'LABELSYM'
-            local rel = t.tok
-            local seen = 0
-            -- TODO: don't iterate over *every* label, just the ones nearby
-            if rel > 0 then
-                for _, label_i in ipairs(plus_labels) do
-                    if label_i > i then
-                        seen = seen + 1
-                        if seen == rel then
-                            t.tok = tostring(label_i)
-                            break
-                        end
-                    end
-                end
-            else
-                for _, label_i in ipairs(minus_labels) do
-                    if label_i < i then
-                        seen = seen - 1
-                        if seen == rel then
-                            t.tok = tostring(label_i)
-                            break
-                        end
-                    end
-                end
-            end
-            if seen ~= rel then
-                self:error('could not find appropriate relative label')
-            end
-        end
-    end
+    local preproc = Preproc(self.options)
+    self.tokens = preproc:process(tokens)
 end
 
 function Parser:parse(asm)
