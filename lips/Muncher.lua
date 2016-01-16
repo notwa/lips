@@ -115,12 +115,12 @@ function Muncher:const(relative, no_label)
     if no_label and self.tt == 'LABELSYM' then
         self:error('labels are not allowed here')
     end
+    local t = self:token(self.t)
     if relative and self.tt == 'LABELSYM' then
-        self.tt = 'LABELREL'
+        t.tt = 'LABELREL'
     end
-    local t = self.t
     self:advance()
-    return self:token(t)
+    return t
 end
 
 function Muncher:special()

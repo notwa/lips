@@ -58,7 +58,7 @@ function Parser:directive()
         -- noop, handled by lexer
     elseif name == 'ASCII' or name == 'ASCIIZ' then
         local bytes = self:string()
-        for i, number in ipairs(bytes) do
+        for i, number in ipairs(bytes.tok) do
             add('BYTE', number)
         end
         if name == 'ASCIIZ' then
