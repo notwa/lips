@@ -4,7 +4,6 @@ local data = require "lips.data"
 local util = require "lips.util"
 
 local instructions = data.instructions
-local withflag = util.withflag
 
 local overrides = {}
 -- note: "self" is an instance of Parser
@@ -20,26 +19,33 @@ function overrides.LI(self, name)
 
     -- for us, this is just semantics. for a "real" assembler,
     -- LA could add appropriate RELO LUI/ADDIU directives.
-    if im[1] == 'LABELSYM' then
+    if im.tt == 'LABELSYM' then
         self:error('use LA for labels')
     end
 
-    im[2] = im[2] % 0x100000000
-    if im[2] >= 0x10000 and im[2] <= 0xFFFF8000 then
+    if im.portion then
+        args.rs = 'R0'
+        args.immediate = im
+        self:format_out(addiu, args)
+        return
+    end
+
+    im.tok = im.tok % 0x100000000
+    if im.tok >= 0x10000 and im.tok <= 0xFFFF8000 then
         args.rs = args.rt
-        args.immediate = withflag(im, 'portion', 'upper')
+        args.immediate = self:token(im):set('portion', 'upper')
         self:format_out(lui, args)
-        if im[2] % 0x10000 ~= 0 then
-            args.immediate = withflag(im, 'portion', 'lower')
+        if im.tok % 0x10000 ~= 0 then
+            args.immediate = self:token(im):set('portion', 'lower')
             self:format_out(ori, args)
         end
-    elseif im[2] >= 0x8000 and im[2] < 0x10000 then
+    elseif im.tok >= 0x8000 and im.tok < 0x10000 then
         args.rs = 'R0'
-        args.immediate = withflag(im, 'portion', 'lower')
+        args.immediate = self:token(im):set('portion', 'lower')
         self:format_out(ori, args)
     else
         args.rs = 'R0'
-        args.immediate = withflag(im, 'portion', 'lower')
+        args.immediate = self:token(im):set('portion', 'lower')
         self:format_out(addiu, args)
     end
 end
@@ -53,9 +59,9 @@ function overrides.LA(self, name)
     local im = self:const()
 
     args.rs = args.rt
-    args.immediate = withflag(im, 'portion', 'upperoff')
+    args.immediate = self:token(im):set('portion', 'upperoff')
     self:format_out(lui, args)
-    args.immediate = withflag(im, 'portion', 'lower')
+    args.immediate = self:token(im):set('portion', 'lower')
     self:format_out(addiu, args)
 end
 
@@ -87,7 +93,7 @@ function overrides.PUSH(self, name)
     if name == 'PUSH' then
         args.rt = 'SP'
         args.rs = 'SP'
-        args.immediate = withflag(#stack*4, 'negate')
+        args.immediate = self:token(#stack*4):set('negate')
         self:format_out(addi, args)
     end
     args.base = 'SP'
@@ -241,7 +247,7 @@ function overrides.BEQI(self, name)
     self:optional_comma()
     args.immediate = self:const()
     self:optional_comma()
-    args.offset = withflag(self:const('relative'), 'signed')
+    args.offset = self:token(self:const('relative')):set('signed')
 
     if reg == 'AT' then
         self:error('register cannot be AT in this pseudo-instruction')
@@ -264,7 +270,7 @@ function overrides.BLTI(self, name)
     self:optional_comma()
     args.immediate = self:const()
     self:optional_comma()
-    args.offset = withflag(self:const('relative'), 'signed')
+    args.offset = self:token(self:const('relative')):set('signed')
 
     if args.rs == 'AT' then
         self:error('register cannot be AT in this pseudo-instruction')
@@ -290,7 +296,7 @@ function overrides.BLEI(self, name)
     self:optional_comma()
     args.immediate = self:const()
     self:optional_comma()
-    local offset = withflag(self:const('relative'), 'signed')
+    local offset = self:token(self:const('relative')):set('signed')
 
     if reg == 'AT' then
         self:error('register cannot be AT in this pseudo-instruction')

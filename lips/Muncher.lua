@@ -3,6 +3,7 @@ local insert = table.insert
 
 local data = require "lips.data"
 local util = require "lips.util"
+local Token = require "lips.Token"
 
 local arg_types = {
     NUM = true,
@@ -19,14 +20,25 @@ function Muncher:error(msg)
     error(format('%s:%d: Error: %s', self.fn, self.line, msg), 2)
 end
 
+function Muncher:token(t, val)
+    -- note: call Token directly if you want to specify fn and line manually
+    if type(t) == 'table' then
+        t.fn = self.fn
+        t.line = self.line
+        return Token(t)
+    else
+        return Token(self.fn, self.line, t, val)
+    end
+end
+
 function Muncher:advance()
     self.i = self.i + 1
-    local t = self.tokens[self.i]
-    self.tt = t.tt
-    self.tok = t.tok
-    self.fn = t.fn
-    self.line = t.line
-    return t
+    self.t = self.tokens[self.i]
+    self.tt = self.t.tt
+    self.tok = self.t.tok
+    self.fn = self.t.fn
+    self.line = self.t.line
+    return self.t
 end
 
 function Muncher:is_EOL()
@@ -52,31 +64,31 @@ function Muncher:number()
     if self.tt ~= 'NUM' then
         self:error('expected number')
     end
-    local value = self.tok
+    local t = self.t
     self:advance()
-    return value
+    return self:token(t)
 end
 
 function Muncher:string()
     if self.tt ~= 'STRING' then
         self:error('expected string')
     end
-    local value = self.tok
+    local t = self.t
     self:advance()
-    return value
+    return self:token(t)
 end
 
-function Muncher:register(t)
-    t = t or data.registers
+function Muncher:register(registers)
+    registers = registers or data.registers
     if self.tt ~= 'REG' then
         self:error('expected register')
     end
-    local reg = self.tok
-    if not t[reg] then
+    local t = self.t
+    if not registers[t.tok] then
         self:error('wrong type of register')
     end
     self:advance()
-    return reg
+    return self:token(t)
 end
 
 function Muncher:deref()
@@ -87,13 +99,13 @@ function Muncher:deref()
     if self.tt ~= 'REG' then
         self:error('expected register to dereference')
     end
-    local reg = self.tok
+    local t = self.t
     self:advance()
     if self.tt ~= 'CLOSE' then
         self:error('expected closing parenthesis for dereferencing')
     end
     self:advance()
-    return reg
+    return self:token(t)
 end
 
 function Muncher:const(relative, no_label)
@@ -106,9 +118,9 @@ function Muncher:const(relative, no_label)
     if relative and self.tt == 'LABELSYM' then
         self.tt = 'LABELREL'
     end
-    local t = {self.tt, self.tok}
+    local t = self.t
     self:advance()
-    return t
+    return self:token(t)
 end
 
 function Muncher:special()
@@ -133,7 +145,6 @@ function Muncher:special()
             insert(args, arg)
         elseif self.tt == 'CLOSE' then
             insert(args, arg)
-            self:advance()
             break
         else
             self:error('unexpected token in argument list')

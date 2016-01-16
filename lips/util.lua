@@ -16,33 +16,6 @@ local function Class(inherit)
     return setmetatable(class, mt_class)
 end
 
-local function construct(t)
-    if type(t) == 'table' then
-        return t
-    elseif type(t) == 'string' then
-        return {'REG', t}
-    elseif type(t) == 'number' then
-        return {'NUM', t}
-    else
-        error('Internal Error: unknown type to construct')
-    end
-end
-
-local function withflag(t, key, value)
-    if type(t) == 'table' then
-        t = {t[1], t[2]}
-    else
-        t = construct(t)
-    end
-    if value == nil then
-        value = true
-    end
-    if key ~= nil then
-        t[key] = value
-    end
-    return t
-end
-
 local function readfile(fn)
     local f = open(fn, 'r')
     if not f then
@@ -59,8 +32,6 @@ end
 
 return {
     Class = Class,
-    construct = construct,
-    withflag = withflag,
     readfile = readfile,
     bitrange = bitrange,
 }

@@ -3,13 +3,11 @@ local insert = table.insert
 local data = require "lips.data"
 local util = require "lips.util"
 local overrides = require "lips.overrides"
+local Token = require "lips.Token"
 local Lexer = require "lips.Lexer"
 local Dumper = require "lips.Dumper"
 local Muncher = require "lips.Muncher"
 local Preproc = require "lips.Preproc"
-
-local construct = util.construct
-local withflag = util.withflag
 
 local Parser = util.Class(Muncher)
 function Parser:init(writer, fn, options)
@@ -26,7 +24,7 @@ function Parser:directive()
         self.dumper:add_directive(self.fn, self.line, ...)
     end
     if name == 'ORG' then
-        add(name, self:number())
+        add(name, self:number().tok)
     elseif name == 'ALIGN' or name == 'SKIP' then
         if self:is_EOL() and name == 'ALIGN' then
             add(name, 0)
@@ -36,24 +34,24 @@ function Parser:directive()
                 add(name, size)
             else
                 self:optional_comma()
-                add(name, size, self:number())
+                add(name, size, self:number().tok)
             end
             self:expect_EOL()
         end
     elseif name == 'BYTE' or name == 'HALFWORD' then
-        add(name, self:number())
+        add(name, self:number().tok)
         while not self:is_EOL() do
             self:advance()
             self:optional_comma()
-            add(name, self:number())
+            add(name, self:number().tok)
         end
         self:expect_EOL()
     elseif name == 'WORD' then -- allow labels in word directives
-        add(name, self:const()[2])
+        add(name, self:const().tok)
         while not self:is_EOL() do
             self:advance()
             self:optional_comma()
-            add(name, self:const()[2])
+            add(name, self:const().tok)
         end
         self:expect_EOL()
     elseif name == 'INC' then
@@ -100,17 +98,17 @@ function Parser:format_in(informat)
         elseif c == 'Z' and not args.rt then
             args.rt = self:register(data.sys_registers)
         elseif c == 'o' and not args.offset then
-            args.offset = withflag(self:const(), 'signed')
+            args.offset = Token(self:const()):set('signed')
         elseif c == 'r' and not args.offset then
-            args.offset = withflag(self:const('relative'), 'signed')
+            args.offset = Token(self:const('relative')):set('signed')
         elseif c == 'i' and not args.immediate then
             args.immediate = self:const(nil, 'no label')
         elseif c == 'I' and not args.index then
-            args.index = withflag(self:const(), 'index')
+            args.index = Token(self:const()):set('index')
         elseif c == 'k' and not args.immediate then
-            args.immediate = withflag(self:const(nil, 'no label'), 'negate')
+            args.immediate = Token(self:const(nil, 'no label')):set('negate')
         elseif c == 'K' and not args.immediate then
-            args.immediate = withflag(self:const(nil, 'no label'), 'signed')
+            args.immediate = Token(self:const(nil, 'no label')):set('signed')
         elseif c == 'b' and not args.base then
             args.base = self:deref()
         else
@@ -133,31 +131,31 @@ function Parser:format_out_raw(outformat, first, args, const, formatconst)
     for i=1,#outformat do
         local c = outformat:sub(i, i)
         if c == 'd' then
-            out[#out+1] = construct(args.rd)
+            out[#out+1] = self:token(args.rd)
         elseif c == 's' then
-            out[#out+1] = construct(args.rs)
+            out[#out+1] = self:token(args.rs)
         elseif c == 't' then
-            out[#out+1] = construct(args.rt)
+            out[#out+1] = self:token(args.rt)
         elseif c == 'D' then
-            out[#out+1] = construct(args.fd)
+            out[#out+1] = self:token(args.fd)
         elseif c == 'S' then
-            out[#out+1] = construct(args.fs)
+            out[#out+1] = self:token(args.fs)
         elseif c == 'T' then
-            out[#out+1] = construct(args.ft)
+            out[#out+1] = self:token(args.ft)
         elseif c == 'o' then
-            out[#out+1] = construct(args.offset)
+            out[#out+1] = self:token(args.offset)
         elseif c == 'i' then
-            out[#out+1] = construct(args.immediate)
+            out[#out+1] = self:token(args.immediate)
         elseif c == 'I' then
-            out[#out+1] = construct(args.index)
+            out[#out+1] = self:token(args.index)
         elseif c == 'b' then
-            out[#out+1] = construct(args.base)
+            out[#out+1] = self:token(args.base)
         elseif c == '0' then
-            out[#out+1] = construct(0)
+            out[#out+1] = self:token(0)
         elseif c == 'C' then
-            out[#out+1] = construct(const)
+            out[#out+1] = self:token(const)
         elseif c == 'F' then
-            out[#out+1] = construct(formatconst)
+            out[#out+1] = self:token(formatconst)
         end
     end
     local f = lookup[#outformat]
@@ -193,9 +191,12 @@ function Parser:instruction()
             local lui_args = {}
             local addu_args = {}
             local o = self:const()
-            args.offset = withflag({o[1], o[2]}, 'portion', 'lower')
-            if o[1] == 'LABELSYM' or o[2] >= 0x80000000 then
-                lui_args.immediate = withflag({o[1], o[2]}, 'portion', 'upperoff')
+            args.offset = self:token(o)
+            if not o.portion then
+                args.offset:set('portion', 'lower')
+            end
+            if not o.portion and (o.tt == 'LABELSYM' or o.tok >= 0x80000000) then
+                lui_args.immediate = Token(o):set('portion', 'upperoff')
                 lui_args.rt = 'AT'
                 self:format_out(lui, lui_args)
                 if not self:is_EOL() then
@@ -236,11 +237,7 @@ function Parser:tokenize(asm)
         end
         assert(a, 'Internal Error: missing token')
 
-        local t = {}
-        t.tt = a
-        t.tok = b
-        t.fn = c
-        t.line = d
+        local t = Token(c, d, a, b)
         insert(tokens, t)
 
         if t.tt == 'EOF' and t.fn == self.main_fn then

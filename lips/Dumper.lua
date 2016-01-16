@@ -127,20 +127,20 @@ function Dumper:add_directive(fn, line, name, a, b)
     end
 end
 
-function Dumper:desym(tok)
-    if type(tok[2]) == 'number' then
-        return tok[2]
-    elseif tok[1] == 'REG' then
-        assert(data.all_registers[tok[2]], 'Internal Error: unknown register')
-        return data.registers[tok[2]] or data.fpu_registers[tok[2]] or data.sys_registers[tok[2]]
-    elseif tok[1] == 'LABELSYM' then
-        local label = self.labels[tok[2]]
+function Dumper:desym(t)
+    if type(t.tok) == 'number' then
+        return t.tok
+    elseif t.tt == 'REG' then
+        assert(data.all_registers[t.tok], 'Internal Error: unknown register')
+        return data.registers[t.tok] or data.fpu_registers[t.tok] or data.sys_registers[t.tok]
+    elseif t.tt == 'LABELSYM' then
+        local label = self.labels[t.tok]
         if label == nil then
             self:error('undefined label')
         end
         return label
-    elseif tok[1] == 'LABELREL' then
-        local label = self.labels[tok[2]]
+    elseif t.tt == 'LABELREL' then
+        local label = self.labels[t.tok]
         if label == nil then
             self:error('undefined label')
         end
@@ -155,31 +155,30 @@ function Dumper:desym(tok)
     error('Internal Error: failed to desym')
 end
 
-function Dumper:toval(tok)
-    assert(type(tok) == 'table', 'Internal Error: invalid value')
-    assert(#tok == 2, 'Internal Error: invalid token')
+function Dumper:toval(t)
+    assert(type(t) == 'table', 'Internal Error: invalid value')
 
-    local val = self:desym(tok)
+    local val = self:desym(t)
 
-    if tok.index then
+    if t.index then
         val = val % 0x80000000
         val = floor(val/4)
     end
-    if tok.negate then
+    if t.negate then
         val = -val
     end
-    if tok.negate or tok.signed then
+    if t.negate or t.signed then
         if val >= 0x10000 or val < -0x8000 then
             self:error('value out of range')
         end
         val = val % 0x10000
     end
 
-    if tok.portion == 'upper' then
+    if t.portion == 'upper' then
         val = bitrange(val, 16, 31)
-    elseif tok.portion == 'lower' then
+    elseif t.portion == 'lower' then
         val = bitrange(val, 0, 15)
-    elseif tok.portion == 'upperoff' then
+    elseif t.portion == 'upperoff' then
         local upper = bitrange(val, 16, 31)
         local lower = bitrange(val, 0, 15)
         if lower >= 0x8000 then
@@ -202,8 +201,8 @@ function Dumper:validate(n, bits)
     end
 end
 
-function Dumper:valvar(tok, bits)
-    local val = self:toval(tok)
+function Dumper:valvar(t, bits)
+    local val = self:toval(t)
     self:validate(val, bits)
     return val
 end

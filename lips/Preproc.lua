@@ -3,6 +3,7 @@ local insert = table.insert
 local data = require "lips.data"
 local util = require "lips.util"
 local Muncher = require "lips.Muncher"
+local Token = require "lips.Token"
 
 local Preproc = util.Class(Muncher)
 function Preproc:init(options)
@@ -35,7 +36,7 @@ function Preproc:process(tokens)
             if tok == nil then
                 self:error('undefined define') -- uhhh nice wording
             end
-            insert(new_tokens, {fn=t.fn, line=t.line, tt=tt, tok=tok})
+            insert(new_tokens, self:token(tt, tok))
         elseif t.tt == 'RELLABEL' then
             if t.tok == '+' then
                 insert(plus_labels, #new_tokens + 1)
@@ -99,8 +100,6 @@ function Preproc:process(tokens)
     self.i = 0
     while self.i < #self.tokens do
         local t = self:advance()
-        self.fn = t.fn
-        self.line = t.line
         if t.tt == 'SPECIAL' then
             local name, args = self:special()
             -- TODO: split to its own file, not unlike overrides.lua
@@ -108,22 +107,19 @@ function Preproc:process(tokens)
                 if #args ~= 1 then
                     self:error('%hi expected exactly one argument')
                 end
-                --local tnew = {fn=t.fn, line=t.line, tt='UPPEROFF', tok=args[1]}
-                self:error('unimplemented special')
+                local tnew = self:token(args[1]):set('portion', 'upperoff')
                 insert(new_tokens, tnew)
             elseif name == 'up' then
                 if #args ~= 1 then
                     self:error('%up expected exactly one argument')
                 end
-                --local tnew = {fn=t.fn, line=t.line, tt='UPPER', tok=args[1]}
-                self:error('unimplemented special')
+                local tnew = self:token(args[1]):set('portion', 'upper')
                 insert(new_tokens, tnew)
             elseif name == 'lo' then
                 if #args ~= 1 then
                     self:error('%lo expected exactly one argument')
                 end
-                self:error('unimplemented special')
-                --local tnew = {fn=t.fn, line=t.line, tt='LOWER', tok=args[1]}
+                local tnew = self:token(args[1]):set('portion', 'lower')
                 insert(new_tokens, tnew)
             else
                 self:error('unknown special')
