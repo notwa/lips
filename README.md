@@ -9,13 +9,105 @@ It does little more than output hex.
 Not for production. Much of the code and syntax is untested and likely to change.
 Even this README is incomplete.
 
+## Usage
+
+Copy the lips directory to somewhere Lua's `package.path` can find it.
+If you're using it locally, you will need to write something like:
+```
+package.path = package.path..";./?/init.lua"
+```
+
+You can then use it as such:
+[example.lua][elua] — [example.asm][easm]
+
+[elua]: ./example.lua
+[easm]: ./example.asm
+
+By default, lips will print the assembled word values in hex:
+```
+18800017
+00001025
+2401002F
+10810002
+0081082A
+10200012
+2488FFFF
+00084080
+etc...
+```
+
+Since lips is designed to assist with ROM/RAM hacking,
+it cannot produce executable files on its own.
+Instead, it is meant to be integrated with an existing executable or memory dump.
+For instance, consider [this injection routine][inject.lua]
+written for the Nintendo 64 Zelda games.
+
+[inject.lua]: https://github.com/notwa/mm/blob/master/Lua/inject.lua
+
 ## Syntax
 
-(TODO)
-
-A derivative of [CajeASM's][caje] syntax.
+lips uses a derivative of [CajeASM's][caje] syntax.
+It takes a couple notes from more traditional assemblers as well.
 
 [caje]: https://github.com/Tarek701/CajeASM/
+
+A run-down of various syntax elements:
+```
+// this is a comment
+/* this is a block comment */
+
+// this is comparible to C's #define my_const 0xDEADBEEF
+[my_const]: 0xDEADBEEF
+// we can then use it in instructions with a @ prefix
+    li      a0, @my_const
+
+// whitespace is optional
+li a0,@myconst
+// commas can be optional too,
+// but this feature will likely be removed in the future.
+li a0 @myconst
+// instruction/register names are case-insensitive, as are hex digits
+    LI      A0, @my_const
+    LuI     a0, 0xDeAd
+// coprocessor 0 registers are case-insensitive as well,
+// though this may change in the future.
+    mfc0    a1, CouNT
+
+// labels are defined with a colon and referenced without prefix, as such:
+my_label:
+    b       my_label
+    nop
+    // directives are prefixed with a dot.
+    // also, labels may be used in .word directives.
+    .word   my_label, 1, 2, 3, 0x4567
+    // octal numbers are supported
+    .short   0177, 0404
+.align // implied argument of 2, for a 2**n=4 byte alignment
+
+// loading and storing can be written in several ways (addressing modes)
+    lw      s0, label
+    lw      s1, (s0)
+    lw      s2, 256(s0)
+    lw      s3, label(s0)
+
+// this is currently unsupported however
+    sw      s2, label+4
+    sw      s3, label+4(s0)
+
+// relative labels, borrowed from asw (except ours require a suffixing colon)
+-:
+    b       ++
+    nop
++:
+-:
+    b       --
+    nop
++:
+    b       -
+    nop
+
+// TODO: more examples!
+```
 
 ## Instructions
 
