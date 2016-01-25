@@ -52,49 +52,51 @@ It takes a couple notes from more traditional assemblers as well.
 [caje]: https://github.com/Tarek701/CajeASM/
 
 A run-down of various syntax elements:
-```
+```asm
 // this is a comment
 /* this is a block comment */
+; this is a more traditional assembly style of comment
+; we'll be using this so github's syntax highlighting doesn't blow up
 
-// this is comparible to C's #define my_const 0xDEADBEEF
+; this is comparible to C's #define my_const 0xDEADBEEF
 [my_const]: 0xDEADBEEF
-// we can then use it in instructions with a @ prefix
+; we can then use it in instructions by adding a @ prefix
     li      a0, @my_const
 
-// whitespace is optional
+; whitespace is optional
 li a0,@myconst
-// commas can be optional too,
-// but this feature will likely be removed in the future.
+; commas can be optional too,
+; but this feature will likely be removed in the future.
 li a0 @myconst
-// instruction/register names are case-insensitive, as are hex digits
+; instruction/register names are case-insensitive, as are hex digits
     LI      A0, @my_const
     LuI     a0, 0xDeAd
-// coprocessor 0 registers are case-insensitive as well,
-// though this may change in the future.
+; coprocessor 0 registers are case-insensitive as well,
+; though this may change in the future.
     mfc0    a1, CouNT
 
-// labels are defined with a colon and referenced without prefix, as such:
+; labels are defined with a colon and referenced without prefix, as such:
 my_label:
     b       my_label
     nop
-    // directives are prefixed with a dot.
-    // also, labels may be used in .word directives.
+; directives are prefixed with a dot.
+; also, labels may be used in .word directives.
     .word   my_label, 1, 2, 3, 0x4567
-    // octal numbers are supported
+; octal numbers are supported
     .short   0177, 0404
-.align // implied argument of 2, for a 2**n=4 byte alignment
+.align ; implied argument of 2, for a 2**n=4 byte alignment
 
-// loading and storing can be written in several ways (addressing modes)
+; loading and storing can be written in several ways (addressing modes)
     lw      s0, label
     lw      s1, (s0)
     lw      s2, 256(s0)
     lw      s3, label(s0)
 
-// this is currently unsupported however
+; this is currently unsupported however
     sw      s2, label+4
     sw      s3, label+4(s0)
 
-// relative labels, borrowed from asw (except ours require a suffixing colon)
+; relative labels, borrowed from asw (except ours require a suffixing colon)
 -:
     b       ++
     nop
@@ -106,7 +108,7 @@ my_label:
     b       -
     nop
 
-// TODO: more examples!
+; TODO: more examples!
 ```
 
 ## Instructions
