@@ -129,7 +129,15 @@ function Dumper:add_directive(fn, line, name, a, b)
 end
 
 function Dumper:desym(t)
-    if type(t.tok) == 'number' then
+    if t.tt == 'REL' then
+        local target = t.tok % 0x80000000
+        local pos = self.pos % 0x80000000
+        local rel = floor(target/4) - 1 - floor(pos/4)
+        if rel > 0x8000 or rel <= -0x8000 then
+            self:error('branch too far')
+        end
+        return rel % 0x10000
+    elseif type(t.tok) == 'number' then
         return t.tok
     elseif t.tt == 'REG' then
         assert(data.all_registers[t.tok], 'Internal Error: unknown register')
