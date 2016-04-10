@@ -24,13 +24,14 @@ function Preproc:process(tokens)
         local t = self:advance()
         local sign = 1
         if t.tt == 'UNARY' then
+            sign = t.tok
             local peek = self.tokens[self.i + 1]
             if peek.tt == 'UNARY' then
                 self:error('unary operators cannot be chained')
             elseif peek.tt == 'EOL' or peek.tt == 'SEP' then
-                t.tt = 'RELLABEL'
+                t.tt = 'RELLABELSYM'
             elseif peek.tt == 'DEFSYM' then
-                sign = t.tok
+                t = self:advance()
             else
                 self:error('expected a symbolic constant after unary operator')
             end
