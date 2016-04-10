@@ -89,6 +89,10 @@ function Lexer:read_chars(pattern)
     return buff
 end
 
+function Lexer:read_spaces()
+    return self:read_chars('[ \t]')
+end
+
 function Lexer:read_decimal()
     local buff = self:read_chars('%d')
     local num = tonumber(buff)
@@ -262,7 +266,7 @@ function Lexer:lex_string_naive(yield) -- no escape sequences
 end
 
 function Lexer:lex_include(_yield)
-    self:read_chars('%s')
+    self:read_spaces()
     local fn
     self:lex_string_naive(function(tt, tok)
         fn = tok
@@ -376,6 +380,7 @@ function Lexer:lex(_yield)
                 self:nextc()
                 yield('RELLABEL', sign_chr)
             else
+                self:read_spaces()
                 local n = self:read_number()
                 if n then
                     yield('NUM', sign*n)
