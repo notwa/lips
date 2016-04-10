@@ -5,6 +5,27 @@ local util = require "lips.util"
 local Muncher = require "lips.Muncher"
 local Token = require "lips.Token"
 
+local abs = math.abs
+
+local function signs(s)
+    local start, end_ = s:find('[+-]+')
+    if start ~= 1 then
+        return 0
+    end
+    if s:sub(1, 1) == '+' then
+        return end_
+    elseif s:sub(1, 1) == '-' then
+        return -end_
+    end
+end
+
+local function RelativeLabel(index, name)
+    return {
+        index = index,
+        name = name,
+    }
+end
+
 local Preproc = util.Class(Muncher)
 function Preproc:init(options)
     self.options = options or {}
@@ -30,6 +51,7 @@ function Preproc:process(tokens)
                 self:error('unary operators cannot be chained')
             elseif peek.tt == 'EOL' or peek.tt == 'SEP' then
                 t.tt = 'RELLABELSYM'
+                t.tok = sign == 1 and '+' or sign == -1 and '-'
             elseif peek.tt == 'DEFSYM' then
                 t = self:advance()
             else
@@ -52,10 +74,12 @@ function Preproc:process(tokens)
             end
             insert(new_tokens, self:token(tt, tok * sign))
         elseif t.tt == 'RELLABEL' then
-            if t.tok == '+' then
-                insert(plus_labels, #new_tokens + 1)
-            elseif t.tok == '-' then
-                insert(minus_labels, 1, #new_tokens + 1)
+            local label = t.tok or ''
+            local rl = RelativeLabel(#new_tokens + 1, label:sub(2))
+            if label:sub(1, 1) == '+' then
+                insert(plus_labels, rl)
+            elseif label:sub(1, 1) == '-' then
+                insert(minus_labels, rl)
             else
                 error('Internal Error: unexpected token for relative label')
             end
@@ -72,29 +96,35 @@ function Preproc:process(tokens)
         if t.tt == 'RELLABEL' then
             t.tt = 'LABEL'
             -- exploits the fact that user labels can't begin with a number
-            t.tok = tostring(i)
+            local name = t.tok:sub(2)
+            t.tok = tostring(i)..name
         elseif t.tt == 'RELLABELSYM' then
             t.tt = 'LABELSYM'
 
-            local rel = t.tok
+            local rel = signs(t.tok)
+            if rel == 0 then
+                error('Internal Error: relative label without signs')
+            end
+            local name = t.tok:sub(abs(rel) + 1)
             local seen = 0
+
             -- TODO: don't iterate over *every* label, just the ones nearby
             if rel > 0 then
-                for _, label_i in ipairs(plus_labels) do
-                    if label_i > i then
+                for _, rl in ipairs(plus_labels) do
+                    if rl.name == name and rl.index > i then
                         seen = seen + 1
                         if seen == rel then
-                            t.tok = tostring(label_i)
+                            t.tok = tostring(rl.index)..name
                             break
                         end
                     end
                 end
             else
-                for _, label_i in ipairs(minus_labels) do
-                    if label_i < i then
+                for _, rl in ipairs(minus_labels) do
+                    if rl.name == name and rl.index < i then
                         seen = seen - 1
                         if seen == rel then
-                            t.tok = tostring(label_i)
+                            t.tok = tostring(rl.index)..name
                             break
                         end
                     end

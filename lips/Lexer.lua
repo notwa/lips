@@ -396,21 +396,25 @@ function Lexer:lex(_yield)
         elseif self.chr == '+' or self.chr == '-' then
             local sign_chr = self.chr
             local sign = sign_chr == '+' and 1 or -1
-            local buff = self:read_chars('%'..self.chr)
-            if #buff == 1 and self.chr == ':' then
+            local signs = self:read_chars('%'..self.chr)
+            local name = ''
+            if self.chr:find('[%a_]') then
+                name = self:read_chars('[%w_]')
+            end
+            if #signs == 1 and self.chr == ':' then
                 self:nextc()
-                yield('RELLABEL', sign_chr)
+                yield('RELLABEL', signs..name)
             else
                 self:read_spaces()
                 local n = self:read_number()
                 if n then
                     yield('NUM', sign*n)
-                elseif #buff == 1 then
+                elseif #signs == 1 and name == '' then
                     -- this could be a RELLABELSYM
                     -- we'll have to let the preproc figure it out
                     yield('UNARY', sign)
                 else
-                    yield('RELLABELSYM', sign*#buff)
+                    yield('RELLABELSYM', signs..name)
                 end
             end
         else
