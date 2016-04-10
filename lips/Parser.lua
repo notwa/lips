@@ -54,7 +54,7 @@ function Parser:directive()
             add(name, self:const().tok)
         end
         self:expect_EOL()
-    elseif name == 'INC' then
+    elseif name == 'INC' or name == 'INCBIN' then
         -- noop, handled by lexer
     elseif name == 'ASCII' or name == 'ASCIIZ' then
         local bytes = self:string()
@@ -65,8 +65,6 @@ function Parser:directive()
             add('BYTE', 0)
         end
         self:expect_EOL()
-    elseif name == 'INCBIN' then
-        self:error('unimplemented')
     elseif name == 'FLOAT' then
         self:error('unimplemented')
     else

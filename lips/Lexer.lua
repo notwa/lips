@@ -278,6 +278,24 @@ function Lexer:lex_include(_yield)
     sublexer:lex(_yield)
 end
 
+function Lexer:lex_include_binary(_yield)
+    self:read_spaces()
+    local fn
+    self:lex_string_naive(function(tt, tok)
+        fn = tok
+    end)
+    if self.options.path then
+        fn = self.options.path..fn
+    end
+    -- NOTE: this allocates two tables for each byte.
+    --       this could easily cause performance issues on big files.
+    local data = util.readfile(fn, true)
+    for b in string.gfind(data, '.') do
+        _yield('DIR', 'BYTE', fn, 0)
+        _yield('NUM', string.byte(b), fn, 0)
+    end
+end
+
 function Lexer:lex(_yield)
     local function yield(tt, tok)
         return _yield(tt, tok, self.fn, self.line)
@@ -338,6 +356,9 @@ function Lexer:lex(_yield)
             if up == 'INC' or up == 'INCASM' or up == 'INCLUDE' then
                 yield('DIR', 'INC')
                 self:lex_include(_yield)
+            elseif up == 'INCBIN' then
+                yield('DIR', 'INCBIN')
+                self:lex_include_binary(_yield)
             else
                 yield('DIR', up)
             end
