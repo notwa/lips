@@ -179,6 +179,7 @@ function Parser:instruction()
     elseif overrides[name] then
         overrides[name](self, name)
     elseif h[2] == 'tob' then -- TODO: or h[2] == 'Tob' then
+        -- handle all the addressing modes for lw/sw-like instructions
         local lui = data.instructions['LUI']
         local addu = data.instructions['ADDU']
         local args = {}
@@ -191,6 +192,9 @@ function Parser:instruction()
             local lui_args = {}
             local addu_args = {}
             local o = self:const()
+            if self.tt == 'NUM' then
+                o:set('offset', self:const().tok)
+            end
             args.offset = self:token(o)
             if not o.portion then
                 args.offset:set('portion', 'lower')

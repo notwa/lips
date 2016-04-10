@@ -379,6 +379,10 @@ function Lexer:lex(_yield)
                 local n = self:read_number()
                 if n then
                     yield('NUM', sign*n)
+                elseif #buff == 1 then
+                    -- this could be a RELLABELSYM
+                    -- we'll have to let the preproc figure it out
+                    yield('UNARY', sign)
                 else
                     yield('RELLABELSYM', sign*#buff)
                 end

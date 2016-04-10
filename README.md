@@ -91,8 +91,6 @@ my_label:
     lw      s1, (s0)
     lw      s2, 256(s0)
     lw      s3, label(s0)
-
-; this is currently unsupported however
     sw      s2, label+4
     sw      s3, label+4(s0)
 

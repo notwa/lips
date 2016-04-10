@@ -17,11 +17,24 @@ function Preproc:process(tokens)
     local plus_labels = {} -- constructed forwards
     local minus_labels = {} -- constructed backwards
 
-    -- first pass: resolve defines, collect relative labels
+    -- first pass: resolve unary ops, defines, and collect relative labels
     local new_tokens = {}
     self.i = 0
     while self.i < #self.tokens do
         local t = self:advance()
+        local sign = 1
+        if t.tt == 'UNARY' then
+            local peek = self.tokens[self.i + 1]
+            if peek.tt == 'UNARY' then
+                self:error('unary operators cannot be chained')
+            elseif peek.tt == 'EOL' or peek.tt == 'SEP' then
+                t.tt = 'RELLABEL'
+            elseif peek.tt == 'DEFSYM' then
+                sign = t.tok
+            else
+                self:error('expected a symbolic constant after unary operator')
+            end
+        end
         if t.tt == nil then
             error('Internal Error: missing token')
         elseif t.tt == 'DEF' then
@@ -36,7 +49,7 @@ function Preproc:process(tokens)
             if tok == nil then
                 self:error('undefined define') -- uhhh nice wording
             end
-            insert(new_tokens, self:token(tt, tok))
+            insert(new_tokens, self:token(tt, tok * sign))
         elseif t.tt == 'RELLABEL' then
             if t.tok == '+' then
                 insert(plus_labels, #new_tokens + 1)
