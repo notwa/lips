@@ -276,6 +276,9 @@ function Parser:parse(asm)
             self:error('unexpected token (unknown instruction?)')
         end
     end
+    if self.options.labels then
+        self.dumper:export_labels(self.options.labels)
+    end
     return self.dumper:dump()
 end
 

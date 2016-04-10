@@ -12,7 +12,7 @@ function Dumper:init(writer, fn, options)
     self.writer = writer
     self.fn = fn or '(string)'
     self.options = options or {}
-    self.labels = {}
+    self.labels = setmetatable({}, {__index=options.labels})
     self.commands = {}
     self.pos = options.offset or 0
     self.lastcommand = nil
@@ -20,6 +20,17 @@ end
 
 function Dumper:error(msg)
     error(format('%s:%d: Error: %s', self.fn, self.line, msg), 2)
+end
+
+function Dumper:export_labels(t)
+    for k, v in pairs(self.labels) do
+        -- only return valid labels; those that don't begin with a number
+        -- (relative labels are invalid)
+        if not tostring(k):sub(1, 1):find('%d') then
+            t[k] = v
+        end
+    end
+    return t
 end
 
 function Dumper:advance(by)
