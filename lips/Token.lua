@@ -1,4 +1,5 @@
-local util = require "lips.util"
+local path = string.gsub(..., "[^.]+$", "")
+local util = require(path.."util")
 
 local Token = util.Class()
 function Token:init(...)

@@ -1,9 +1,10 @@
 local insert = table.insert
 
-local data = require "lips.data"
-local util = require "lips.util"
-local Muncher = require "lips.Muncher"
-local Token = require "lips.Token"
+local path = string.gsub(..., "[^.]+$", "")
+local data = require(path.."data")
+local util = require(path.."util")
+local Muncher = require(path.."Muncher")
+local Token = require(path.."Token")
 
 local abs = math.abs
 

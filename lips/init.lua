@@ -10,8 +10,9 @@ local lips = {
     ]],
 }
 
-local util = require "lips.util"
-local Parser = require "lips.Parser"
+local path = string.gsub(..., "%.init$", "").."."
+local util = require(path.."util")
+local Parser = require(path.."Parser")
 
 function lips.word_writer()
     local buff = {}

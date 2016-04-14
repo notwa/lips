@@ -1,7 +1,8 @@
 local insert = table.insert
 
-local data = require "lips.data"
-local util = require "lips.util"
+local path = string.gsub(..., "[^.]+$", "")
+local data = require(path.."data")
+local util = require(path.."util")
 
 local instructions = data.instructions
 

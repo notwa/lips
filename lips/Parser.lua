@@ -1,13 +1,14 @@
 local insert = table.insert
 
-local data = require "lips.data"
-local util = require "lips.util"
-local overrides = require "lips.overrides"
-local Token = require "lips.Token"
-local Lexer = require "lips.Lexer"
-local Dumper = require "lips.Dumper"
-local Muncher = require "lips.Muncher"
-local Preproc = require "lips.Preproc"
+local path = string.gsub(..., "[^.]+$", "")
+local data = require(path.."data")
+local util = require(path.."util")
+local overrides = require(path.."overrides")
+local Token = require(path.."Token")
+local Lexer = require(path.."Lexer")
+local Dumper = require(path.."Dumper")
+local Muncher = require(path.."Muncher")
+local Preproc = require(path.."Preproc")
 
 local Parser = util.Class(Muncher)
 function Parser:init(writer, fn, options)

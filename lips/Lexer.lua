@@ -4,8 +4,9 @@ local find = string.find
 local format = string.format
 local insert = table.insert
 
-local data = require "lips.data"
-local util = require "lips.util"
+local path = string.gsub(..., "[^.]+$", "")
+local data = require(path.."data")
+local util = require(path.."util")
 
 local simple_escapes = {
     ['0']   = 0x00,
