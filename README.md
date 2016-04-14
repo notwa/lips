@@ -14,7 +14,7 @@ Even this README is incomplete.
 Copy the lips directory to somewhere Lua's `package.path` can find it.
 If you're using it locally, you will need to write something like:
 ```
-package.path = package.path.."?/init.lua"
+package.path = package.path..";?/init.lua"
 ```
 or `require "lips.init"` directly.
 
