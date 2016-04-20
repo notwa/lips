@@ -143,7 +143,7 @@ function Lexer:read_number()
         self:nextc()
         return self:read_hex()
     elseif self.chr:find('%d') then
-        if self.chr2 == 'x' or self.chr2 == 'X' then
+        if self.chr2 == 'x' then
             self:nextc()
             self:nextc()
             return self:read_hex()
