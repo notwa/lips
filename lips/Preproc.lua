@@ -2,7 +2,6 @@ local insert = table.insert
 
 local path = string.gsub(..., "[^.]+$", "")
 local data = require(path.."data")
-local util = require(path.."util")
 local Muncher = require(path.."Muncher")
 local Token = require(path.."Token")
 
@@ -27,7 +26,7 @@ local function RelativeLabel(index, name)
     }
 end
 
-local Preproc = util.Class(Muncher)
+local Preproc = Muncher:extend()
 function Preproc:init(options)
     self.options = options or {}
 end

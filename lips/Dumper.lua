@@ -5,10 +5,11 @@ local insert = table.insert
 local path = string.gsub(..., "[^.]+$", "")
 local data = require(path.."data")
 local util = require(path.."util")
+local Base = require(path.."Base")
 
 local bitrange = util.bitrange
 
-local Dumper = util.Class()
+local Dumper = Base:extend()
 function Dumper:init(writer, fn, options)
     self.writer = writer
     self.fn = fn or '(string)'

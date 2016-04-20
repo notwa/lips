@@ -1,21 +1,6 @@
 local floor = math.floor
 local open = io.open
 
-local function Class(inherit)
-    local class = {}
-    local mt_obj = {__index = class}
-    local mt_class = {
-        __call = function(self, ...)
-            local obj = setmetatable({}, mt_obj)
-            obj:init(...)
-            return obj
-        end,
-        __index = inherit,
-    }
-
-    return setmetatable(class, mt_class)
-end
-
 local function readfile(fn, binary)
     local mode = binary and 'rb' or 'r'
     local f = open(fn, mode)
@@ -33,7 +18,6 @@ local function bitrange(x, lower, upper)
 end
 
 return {
-    Class = Class,
     readfile = readfile,
     bitrange = bitrange,
 }

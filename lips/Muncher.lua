@@ -3,7 +3,7 @@ local insert = table.insert
 
 local path = string.gsub(..., "[^.]+$", "")
 local data = require(path.."data")
-local util = require(path.."util")
+local Base = require(path.."Base")
 local Token = require(path.."Token")
 
 local arg_types = {
@@ -14,7 +14,7 @@ local arg_types = {
     RELLABELSYM = true,
 }
 
-local Muncher = util.Class()
+local Muncher = Base:extend()
 -- no base init method
 
 function Muncher:error(msg)
@@ -26,9 +26,11 @@ function Muncher:token(t, val)
     if type(t) == 'table' then
         t.fn = self.fn
         t.line = self.line
-        return Token(t)
+        local token = Token(t)
+        return token
     else
-        return Token(self.fn, self.line, t, val)
+        local token = Token(self.fn, self.line, t, val)
+        return token
     end
 end
 

@@ -7,6 +7,7 @@ local insert = table.insert
 local path = string.gsub(..., "[^.]+$", "")
 local data = require(path.."data")
 local util = require(path.."util")
+local Base = require(path.."Base")
 
 local simple_escapes = {
     ['0']   = 0x00,
@@ -21,7 +22,7 @@ local simple_escapes = {
     ['v']   = 0x0B,
 }
 
-local Lexer = util.Class()
+local Lexer = Base:extend()
 function Lexer:init(asm, fn, options)
     self.asm = asm
     self.fn = fn or '(string)'

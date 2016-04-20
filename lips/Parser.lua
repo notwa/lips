@@ -2,7 +2,6 @@ local insert = table.insert
 
 local path = string.gsub(..., "[^.]+$", "")
 local data = require(path.."data")
-local util = require(path.."util")
 local overrides = require(path.."overrides")
 local Token = require(path.."Token")
 local Lexer = require(path.."Lexer")
@@ -10,7 +9,7 @@ local Dumper = require(path.."Dumper")
 local Muncher = require(path.."Muncher")
 local Preproc = require(path.."Preproc")
 
-local Parser = util.Class(Muncher)
+local Parser = Muncher:extend()
 function Parser:init(writer, fn, options)
     self.fn = fn or '(string)'
     self.main_fn = self.fn

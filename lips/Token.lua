@@ -1,7 +1,7 @@
 local path = string.gsub(..., "[^.]+$", "")
-local util = require(path.."util")
+local Base = require(path.."Base")
 
-local Token = util.Class()
+local Token = Base:extend()
 function Token:init(...)
     local args = {...}
     if #args == 1 then

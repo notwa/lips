@@ -2,7 +2,6 @@ local insert = table.insert
 
 local path = string.gsub(..., "[^.]+$", "")
 local data = require(path.."data")
-local util = require(path.."util")
 
 local instructions = data.instructions
 
