@@ -17,7 +17,10 @@ local arg_types = {
 local Muncher = Base:extend()
 -- no base init method
 
-function Muncher:error(msg)
+function Muncher:error(msg, got)
+    if got ~= nil then
+        msg = msg..', got '..tostring(got)
+    end
     error(format('%s:%d: Error: %s', self.fn, self.line, msg), 2)
 end
 
@@ -112,8 +115,8 @@ function Muncher:deref()
 end
 
 function Muncher:const(relative, no_label)
-    if self.tt ~= 'NUM' and self.tt ~= 'LABELSYM' then
-        self:error('expected constant')
+    if self.tt ~= 'NUM' and self.tt ~= 'DEFSYM' and self.tt ~= 'LABELSYM' then
+        self:error('expected constant', self.tt)
     end
     if no_label and self.tt == 'LABELSYM' then
         self:error('labels are not allowed here')

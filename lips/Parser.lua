@@ -3,13 +3,14 @@ local insert = table.insert
 local path = string.gsub(..., "[^.]+$", "")
 local data = require(path.."data")
 local overrides = require(path.."overrides")
+local Base = require(path.."Base")
 local Token = require(path.."Token")
 local Lexer = require(path.."Lexer")
-local Dumper = require(path.."Dumper")
-local Muncher = require(path.."Muncher")
+local Collector = require(path.."Collector")
 local Preproc = require(path.."Preproc")
+local Dumper = require(path.."Dumper")
 
-local Parser = Muncher:extend()
+local Parser = Base:extend()
 function Parser:init(writer, fn, options)
     self.fn = fn or '(string)'
     self.main_fn = self.fn
@@ -17,61 +18,7 @@ function Parser:init(writer, fn, options)
     self.dumper = Dumper(writer, fn, options)
 end
 
-function Parser:directive()
-    local name = self.tok
-    self:advance()
-    local function add(...)
-        self.dumper:add_directive(self.fn, self.line, ...)
-    end
-    if name == 'ORG' then
-        add(name, self:number().tok)
-    elseif name == 'ALIGN' or name == 'SKIP' then
-        if self:is_EOL() and name == 'ALIGN' then
-            add(name, 0)
-        else
-            local size = self:number().tok
-            if self:is_EOL() then
-                add(name, size)
-            else
-                self:optional_comma()
-                add(name, size, self:number().tok)
-            end
-            self:expect_EOL()
-        end
-    elseif name == 'BYTE' or name == 'HALFWORD' then
-        add(name, self:number().tok)
-        while not self:is_EOL() do
-            self:advance()
-            self:optional_comma()
-            add(name, self:number().tok)
-        end
-        self:expect_EOL()
-    elseif name == 'WORD' then
-        -- allow labels in word directives
-        add(name, self:const().tok)
-        while not self:is_EOL() do
-            self:advance()
-            self:optional_comma()
-            add(name, self:const().tok)
-        end
-        self:expect_EOL()
-    elseif name == 'INC' or name == 'INCBIN' then
-        -- noop, handled by lexer
-    elseif name == 'ASCII' or name == 'ASCIIZ' then
-        local bytes = self:string()
-        for i, number in ipairs(bytes.tok) do
-            add('BYTE', number)
-        end
-        if name == 'ASCIIZ' then
-            add('BYTE', 0)
-        end
-        self:expect_EOL()
-    elseif name == 'FLOAT' then
-        self:error('unimplemented directive')
-    else
-        self:error('unknown directive')
-    end
-end
+--[[
 
 function Parser:format_in(informat)
     -- see data.lua for a guide on what all these mean
@@ -222,10 +169,9 @@ function Parser:instruction()
     end
     self:expect_EOL()
 end
+--]]
 
 function Parser:tokenize(asm)
-    self.i = 0
-
     local lexer = Lexer(asm, self.main_fn, self.options)
     local tokens = {}
 
@@ -242,41 +188,37 @@ function Parser:tokenize(asm)
         end)
     end
 
+    local collector = Collector(self.options)
+    local statements = collector:collect(tokens, self.main_fn)
+
+    --[[
     local preproc = Preproc(self.options)
-    self.tokens = preproc:process(tokens)
+    self.statements = preproc:process(statements)
 
     -- the lexer guarantees an EOL and EOF for a blank file
     assert(#self.tokens > 0, 'Internal Error: no tokens after preprocessing')
+    --]]
+    self.statements = statements
 end
 
 function Parser:parse(asm)
     self:tokenize(asm)
-    self:advance() -- load up the first token
-    while true do
-        if self.tt == 'EOF' then
-            -- don't break if this is an included file's EOF
-            if self.fn == self.main_fn then
-                break
-            end
-            self:advance()
-        elseif self.tt == 'EOL' then
-            -- empty line
-            self:advance()
-        elseif self.tt == 'DIR' then
-            self:directive() -- handles advancing
-        elseif self.tt == 'LABEL' then
-            self.dumper:add_label(self.tok)
-            self:advance()
-        elseif self.tt == 'INSTR' then
-            self:instruction() -- handles advancing
-        else
-            self:error('unexpected token (unknown instruction?)')
+
+    -- DEBUG
+    for i, s in ipairs(self.statements) do
+        local values = ''
+        for j, v in ipairs(s) do
+            values = values..'\t'..v.tt
         end
+        values = values:sub(2)
+        print(i, s.type, values)
     end
+    --[[
     if self.options.labels then
         self.dumper:export_labels(self.options.labels)
     end
     return self.dumper:dump()
+    --]]
 end
 
 return Parser
