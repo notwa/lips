@@ -9,7 +9,7 @@ local Token = require(path.."Token")
 local arg_types = {
     NUM = true,
     REG = true,
-    DEFSYM = true,
+    VARSYM = true,
     LABELSYM = true,
     RELLABELSYM = true,
 }
@@ -115,7 +115,7 @@ function Muncher:deref()
 end
 
 function Muncher:const(relative, no_label)
-    if self.tt ~= 'NUM' and self.tt ~= 'DEFSYM' and self.tt ~= 'LABELSYM' then
+    if self.tt ~= 'NUM' and self.tt ~= 'VARSYM' and self.tt ~= 'LABELSYM' then
         self:error('expected constant', self.tt)
     end
     if no_label and self.tt == 'LABELSYM' then

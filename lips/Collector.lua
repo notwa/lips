@@ -9,7 +9,7 @@ local Muncher = require(path.."Muncher")
 local arg_types = { -- for instructions
     NUM = true,
     REG = true,
-    DEFSYM = true,
+    VARSYM = true,
     LABELSYM = true,
     RELLABELSYM = true,
 }
@@ -78,7 +78,7 @@ function Collector:variable()
     local t = self.t
     local t2 = self:advance()
 
-    local s = self:statement('!DEF', t, t2)
+    local s = self:statement('!VAR', t, t2)
     insert(self.statements, s)
     self:advance()
 end
@@ -165,7 +165,7 @@ function Collector:instruction()
             insert(s, t)
         elseif self.tt == 'UNARY' then
             local peek = self.tokens[self.i + 1]
-            if peek.tt == 'DEFSYM' then
+            if peek.tt == 'VARSYM' then
                 t = self:advance()
                 t = Token(t):set('negate')
                 insert(s, t)
@@ -216,7 +216,7 @@ function Collector:collect(tokens, fn)
         elseif self.tt == 'EOL' then
             -- empty line
             self:advance()
-        elseif self.tt == 'DEF' then
+        elseif self.tt == 'VAR' then
             self:variable() -- handles advancing
         elseif self.tt == 'LABEL' or self.tt == 'RELLABEL' then
             insert(self.statements, self:statement('!LABEL', self.t))

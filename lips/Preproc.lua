@@ -52,7 +52,7 @@ function Preproc:process(tokens)
             elseif peek.tt == 'EOL' or peek.tt == 'SEP' then
                 t.tt = 'RELLABELSYM'
                 t.tok = sign == 1 and '+' or sign == -1 and '-'
-            elseif peek.tt == 'DEFSYM' then
+            elseif peek.tt == 'VARSYM' then
                 t = self:advance()
             else
                 self:error('expected a symbolic constant after unary operator')
@@ -60,13 +60,13 @@ function Preproc:process(tokens)
         end
         if t.tt == nil then
             error('Internal Error: missing token')
-        elseif t.tt == 'DEF' then
+        elseif t.tt == 'VAR' then
             local t2 = self:advance()
             if t2.tt ~= 'NUM' then
                 self:error('expected number for variable')
             end
             variables[t.tok] = t2.tok
-        elseif t.tt == 'DEFSYM' then
+        elseif t.tt == 'VARSYM' then
             local tt = 'NUM'
             local tok = variables[t.tok]
             if tok == nil then

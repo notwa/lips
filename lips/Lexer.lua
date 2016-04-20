@@ -358,7 +358,7 @@ function Lexer:lex(_yield)
                 self:error('expected a colon after closing bracket')
             end
             self:nextc()
-            yield('DEF', buff)
+            yield('VAR', buff)
         elseif self.chr == ']' then
             self:error('unmatched closing bracket')
         elseif self.chr == '(' then
@@ -391,7 +391,7 @@ function Lexer:lex(_yield)
         elseif self.chr == '@' then
             self:nextc()
             local buff = self:read_chars('[%w_]')
-            yield('DEFSYM', buff)
+            yield('VARSYM', buff)
         elseif self.chr == '%' then
             self:nextc()
             if self.chr:find('[%a_]') then
