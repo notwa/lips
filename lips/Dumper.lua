@@ -127,13 +127,13 @@ function Dumper:add_directive(fn, line, name, a, b)
         end
         local temp = self.pos + align - 1
         t.skip = temp - (temp % align) - self.pos
-        t.fill = t.fill or 0
+        t.fill = b and b % 0x100 or 0
         insert(self.commands, t)
         self:advance(t.skip)
     elseif name == 'SKIP' then
         t.kind = 'ahead'
         t.skip = a
-        t.fill = b
+        t.fill = b and b % 0x100 or nil
         insert(self.commands, t)
         self:advance(t.skip)
     else

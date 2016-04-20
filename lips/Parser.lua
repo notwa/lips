@@ -23,7 +23,6 @@ function Parser:directive()
     local function add(...)
         self.dumper:add_directive(self.fn, self.line, ...)
     end
-    -- FIXME: some of these directives allow byte values greater than 255
     if name == 'ORG' then
         add(name, self:number().tok)
     elseif name == 'ALIGN' or name == 'SKIP' then
