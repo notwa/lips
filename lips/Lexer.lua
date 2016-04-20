@@ -147,6 +147,14 @@ function Lexer:read_number()
             self:nextc()
             self:nextc()
             return self:read_hex()
+        elseif self.chr2 == 'o' then
+            self:nextc()
+            self:nextc()
+            return self:read_octal()
+        elseif self.chr2 == 'b' then
+            self:nextc()
+            self:nextc()
+            return self:read_binary()
         elseif self.chr == '0' and self.chr2:find('%d') then
             self:nextc()
             return self:read_octal()
