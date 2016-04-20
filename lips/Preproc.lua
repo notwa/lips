@@ -35,11 +35,11 @@ end
 function Preproc:process(tokens)
     self.tokens = tokens
 
-    local defines = {}
+    local variables = {}
     local plus_labels = {} -- constructed forwards
     local minus_labels = {} -- constructed backwards
 
-    -- first pass: resolve unary ops, defines, and collect relative labels
+    -- first pass: resolve unary ops, variables, and collect relative labels
     local new_tokens = {}
     self.i = 0
     while self.i < #self.tokens do
@@ -64,14 +64,14 @@ function Preproc:process(tokens)
         elseif t.tt == 'DEF' then
             local t2 = self:advance()
             if t2.tt ~= 'NUM' then
-                self:error('expected number for define')
+                self:error('expected number for variable')
             end
-            defines[t.tok] = t2.tok
+            variables[t.tok] = t2.tok
         elseif t.tt == 'DEFSYM' then
             local tt = 'NUM'
-            local tok = defines[t.tok]
+            local tok = variables[t.tok]
             if tok == nil then
-                self:error('undefined define') -- uhhh nice wording
+                self:error('undefined variable')
             end
             insert(new_tokens, self:token(tt, tok * sign))
         elseif t.tt == 'RELLABEL' then

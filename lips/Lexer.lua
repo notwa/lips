@@ -350,11 +350,11 @@ function Lexer:lex(_yield)
             self:nextc()
             local buff = self:read_chars('[%w_]')
             if self.chr ~= ']' then
-                self:error('invalid define name')
+                self:error('invalid variable name')
             end
             self:nextc()
             if self.chr ~= ':' then
-                self:error('define requires a colon')
+                self:error('expected a colon after closing bracket')
             end
             self:nextc()
             yield('DEF', buff)
