@@ -38,6 +38,19 @@ function Lexer:error(msg)
 end
 
 function Lexer:nextc()
+    -- iterate to the next character while translating newlines.
+    -- outputs:
+    --self.chr      the character as a string
+    --self.chr2     the character after it as a string
+    --self.chrchr   both characters as a string
+    --              chr values can be empty
+    --self.ord      numeric value of the character
+    --self.ord2     numeric value of the character after it
+    --              ord values can be self.EOF
+    --self.was_EOL  if the character was an EOL
+    --              this EOL state is preserved past the EOF
+    --              so it can be used to determine if the file lacks a final EOL
+
     if self.pos > #self.asm then
         self.ord = self.EOF
         self.ord2 = self.EOF
@@ -285,11 +298,12 @@ function Lexer:lex_include_binary(_yield)
     self:lex_string_naive(function(tt, tok)
         fn = tok
     end)
+    -- TODO: allow optional offset and size arguments
     if self.options.path then
         fn = self.options.path..fn
     end
-    -- NOTE: this allocates two tables for each byte.
-    --       this could easily cause performance issues on big files.
+    -- FIXME: this allocates two tables for each byte.
+    --        this could easily cause performance issues on big files.
     local data = util.readfile(fn, true)
     for b in string.gfind(data, '.') do
         _yield('DIR', 'BYTE', fn, 0)
@@ -371,8 +385,16 @@ function Lexer:lex(_yield)
             yield('DEFSYM', buff)
         elseif self.chr == '%' then
             self:nextc()
-            local call = self:read_chars('[%w_]')
-            yield('SPECIAL', call)
+            if self.chr:find('[%a_]') then
+                local call = self:read_chars('[%w_]')
+                if call ~= '' then
+                    yield('SPECIAL', call)
+                end
+            elseif self.chr:find('[01]') then
+                yield('NUM', self:read_binary())
+            else
+                self:error('unknown % syntax')
+            end
         elseif self.chr:find('[%a_]') then
             local buff = self:read_chars('[%w_.]')
             local up = buff:upper()
