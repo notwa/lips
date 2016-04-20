@@ -48,7 +48,8 @@ function Parser:directive()
             add(name, self:number().tok)
         end
         self:expect_EOL()
-    elseif name == 'WORD' then -- allow labels in word directives
+    elseif name == 'WORD' then
+        -- allow labels in word directives
         add(name, self:const().tok)
         while not self:is_EOL() do
             self:advance()
@@ -68,13 +69,14 @@ function Parser:directive()
         end
         self:expect_EOL()
     elseif name == 'FLOAT' then
-        self:error('unimplemented')
+        self:error('unimplemented directive')
     else
         self:error('unknown directive')
     end
 end
 
 function Parser:format_in(informat)
+    -- see data.lua for a guide on what all these mean
     local args = {}
     for i=1,#informat do
         local c = informat:sub(i, i)
@@ -122,6 +124,7 @@ function Parser:format_in(informat)
 end
 
 function Parser:format_out_raw(outformat, first, args, const, formatconst)
+    -- see data.lua for a guide on what all these mean
     local lookup = {
         [1]=self.dumper.add_instruction_j,
         [3]=self.dumper.add_instruction_i,
@@ -159,9 +162,7 @@ function Parser:format_out_raw(outformat, first, args, const, formatconst)
         end
     end
     local f = lookup[#outformat]
-    if f == nil then
-        error('Internal Error: invalid output formatting string')
-    end
+    assert(f, 'Internal Error: invalid output formatting string')
     f(self.dumper, self.fn, self.line, first, out[1], out[2], out[3], out[4], out[5])
 end
 
@@ -172,11 +173,10 @@ end
 function Parser:instruction()
     local name = self.tok
     local h = data.instructions[name]
+    assert(h, 'Internal Error: undefined instruction')
     self:advance()
 
-    if h == nil then
-        error('Internal Error: undefined instruction')
-    elseif overrides[name] then
+    if overrides[name] then
         overrides[name](self, name)
     elseif h[2] == 'tob' then -- TODO: or h[2] == 'Tob' then
         -- handle all the addressing modes for lw/sw-like instructions
@@ -199,6 +199,7 @@ function Parser:instruction()
             if not o.portion then
                 args.offset:set('portion', 'lower')
             end
+            -- attempt to use the fewest possible instructions for this offset
             if not o.portion and (o.tt == 'LABELSYM' or o.tok >= 0x80000000) then
                 lui_args.immediate = Token(o):set('portion', 'upperoff')
                 lui_args.rt = 'AT'
@@ -244,6 +245,7 @@ function Parser:tokenize(asm)
         local t = Token(c, d, a, b)
         insert(tokens, t)
 
+        -- don't break if this is an included file's EOF
         if t.tt == 'EOF' and t.fn == self.main_fn then
             break
         end
@@ -252,14 +254,16 @@ function Parser:tokenize(asm)
     local preproc = Preproc(self.options)
     self.tokens = preproc:process(tokens)
 
+    -- the lexer guarantees an EOL and EOF for a blank file
     assert(#self.tokens > 0, 'Internal Error: no tokens after preprocessing')
 end
 
 function Parser:parse(asm)
     self:tokenize(asm)
-    self:advance()
+    self:advance() -- load up the first token
     while true do
         if self.tt == 'EOF' then
+            -- don't break if this is an included file's EOF
             if self.fn == self.main_fn then
                 break
             end
@@ -268,12 +272,12 @@ function Parser:parse(asm)
             -- empty line
             self:advance()
         elseif self.tt == 'DIR' then
-            self:directive()
+            self:directive() -- handles advancing
         elseif self.tt == 'LABEL' then
             self.dumper:add_label(self.tok)
             self:advance()
         elseif self.tt == 'INSTR' then
-            self:instruction()
+            self:instruction() -- handles advancing
         else
             self:error('unexpected token (unknown instruction?)')
         end
