@@ -226,27 +226,20 @@ end
 function Parser:tokenize(asm)
     self.i = 0
 
-    local routine = coroutine.create(function()
-        local lexer = Lexer(asm, self.main_fn, self.options)
-        lexer:lex(coroutine.yield)
-    end)
-
+    local lexer = Lexer(asm, self.main_fn, self.options)
     local tokens = {}
-    while true do
-        local ok, a, b, c, d = coroutine.resume(routine)
-        if not ok then
-            a = a or 'Internal Error: lexer coroutine has stopped'
-            error(a)
-        end
-        assert(a, 'Internal Error: missing token')
 
-        local t = Token(c, d, a, b)
-        insert(tokens, t)
-
-        -- don't break if this is an included file's EOF
-        if t.tt == 'EOF' and t.fn == self.main_fn then
-            break
-        end
+    local loop = true
+    while loop do
+        lexer:lex(function(tt, tok, fn, line)
+            assert(tt, 'Internal Error: missing token')
+            local t = Token(fn, line, tt, tok)
+            insert(tokens, t)
+            -- don't break if this is an included file's EOF
+            if tt == 'EOF' and fn == self.main_fn then
+                loop = false
+            end
+        end)
     end
 
     local preproc = Preproc(self.options)
