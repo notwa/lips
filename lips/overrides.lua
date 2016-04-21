@@ -88,7 +88,7 @@ function overrides.LA(self, name)
     local immediate = self:token(im):set('portion', 'upperoff')
     self:push_new('LUI', rt, immediate)
     local immediate = self:token(im):set('portion', 'lower')
-    self:push_new('ADDIU', rt, immediate)
+    self:push_new('ADDIU', rt, rt, immediate)
 end
 
 function overrides.PUSH(self, name)

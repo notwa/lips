@@ -85,7 +85,7 @@ function Collector:directive()
         insert(self.statements, self:statement('!'..kind, ...))
     end
     if name == 'ORG' then
-        add(name, self:const(false, true))
+        add(name, self:const(nil, 'no labels'))
     elseif name == 'ALIGN' or name == 'SKIP' then
         if self:is_EOL() and name == 'ALIGN' then
             add(name, self:token('NUM', 0))

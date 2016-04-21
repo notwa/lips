@@ -98,29 +98,40 @@ function Parser:tokenize(asm)
     self.statements = collector:collect(tokens, self.main_fn)
 end
 
+function Parser:debug_dump()
+    for i, s in ipairs(self.statements) do
+        local values = ''
+        for j, v in ipairs(s) do
+            local tok = v.tok
+            if type(tok) == 'number' then
+                tok = ("$%X"):format(tok)
+            end
+            values = values..'\t'..v.tt..'('..tostring(tok)..')'
+        end
+        values = values:sub(2)
+        print(s.line, s.type, values)
+    end
+end
+
 function Parser:parse(asm)
     self:tokenize(asm)
+
+    if self.options.debug_token then self:debug_dump() end
 
     local preproc = Preproc(self.options)
     self.statements = preproc:process(self.statements)
     self.statements = preproc:expand(self.statements)
 
-    -- DEBUG
-    for i, s in ipairs(self.statements) do
-        local values = ''
-        for j, v in ipairs(s) do
-            values = values..'\t'..v.tt..'('..tostring(v.tok)..')'
-        end
-        values = values:sub(2)
-        print(i, s.type, values)
-    end
+    if self.options.debug_pre then self:debug_dump() end
 
     local dumper = Dumper(self.writer, self.options)
     self.statements = dumper:load(self.statements)
 
-    --if self.options.labels then
-    --    dumper:export_labels(self.options.labels)
-    --end
+    if self.options.debug_dump then self:debug_dump() end
+
+    if self.options.labels then
+        dumper:export_labels(self.options.labels)
+    end
     return dumper:dump()
 end
 

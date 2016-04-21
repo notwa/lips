@@ -39,9 +39,27 @@ else -- 5.2, 5.3
     end
 end
 
+local function measure_data(s)
+    assert(s and s.type == '!DATA', 'Internal Error: expected !DATA statement')
+    local n = 0
+    for i, t in ipairs(s) do
+        if t.type == 'LABEL' then
+            n = n + 4
+        elseif t.type == 'WORDS' then
+            n = n + #t.tok * 4
+        elseif t.type == 'HALFWORDS' then
+            n = n + #t.tok * 2
+        elseif t.type == 'BYTES' then
+            n = n + #t.tok * 1
+        end
+    end
+    return n
+end
+
 return {
     readfile = readfile,
     bitrange = bitrange,
     parent = parent,
     loadcode = loadcode,
+    measure_data = measure_data,
 }

@@ -56,18 +56,18 @@ function Reader:register(registers)
 end
 
 function Reader:const(relative, no_label)
-    if no_label then
-        self:expect{'NUM'}
-    else
-        self:expect{'NUM', 'LABELSYM'}
-    end
+    self:expect{'NUM', 'LABELSYM', 'LABELREL'}
     local t = self.s[self.i]
+    -- overrides will want to LUI a label; let portioned labels pass
+    if no_label and not t.portion then
+        self:expect{'NUM', 'LABELREL'}
+    end
     local new = Token(t)
     if relative then
         if t.tt == 'LABELSYM' then
-            new.t = 'LABELREL'
-        else
-            new.t = 'REL'
+            new.tt = 'LABELREL'
+        elseif t.tt == 'NUM' then
+            new.tt = 'REL'
         end
     end
     return new

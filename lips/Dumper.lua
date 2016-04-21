@@ -108,7 +108,7 @@ function Dumper:desym(t)
     elseif t.tt == 'LABELSYM' or t.tt == 'LABELREL' then
         local label = self.labels[t.tok]
         if label == nil then
-            self:error('undefined label')
+            self:error('undefined label', t.tok)
         end
         if t.offset then
             label = label + t.offset
@@ -144,12 +144,6 @@ function Dumper:toval(t)
     if t.negate then
         val = -val
     end
-    if t.negate or t.signed then
-        if val >= 0x10000 or val < -0x8000 then
-            self:error('value out of range')
-        end
-        val = val % 0x10000
-    end
 
     if t.portion == 'upper' then
         val = bitrange(val, 16, 31)
@@ -163,6 +157,13 @@ function Dumper:toval(t)
             upper = (upper + 1) % 0x10000
         end
         val = upper
+    end
+
+    if t.negate or t.signed then
+        if val >= 0x10000 or val < -0x8000 then
+            self:error('value out of range', val)
+        end
+        val = val % 0x10000
     end
 
     return val
@@ -250,7 +251,6 @@ function Dumper:assemble_r(first, out)
     return s
 end
 
--- NOTE: we could move format_{in,out} to its own virtual class and inherit it
 function Dumper:format_in(informat)
     -- see data.lua for a guide on what all these mean
     local args = {}
@@ -277,17 +277,17 @@ function Dumper:format_in(informat)
         elseif c == 'Z' and not args.rt then
             args.rt = self:register(data.sys_registers)
         elseif c == 'o' and not args.offset then
-            args.offset = Token(self:const()):set('signed')
+            args.offset = self:const():set('signed')
         elseif c == 'r' and not args.offset then
-            args.offset = Token(self:const('relative')):set('signed')
+            args.offset = self:const('relative'):set('signed')
         elseif c == 'i' and not args.immediate then
             args.immediate = self:const(nil, 'no label')
         elseif c == 'I' and not args.index then
-            args.index = Token(self:const()):set('index')
+            args.index = self:const():set('index')
         elseif c == 'k' and not args.immediate then
-            args.immediate = Token(self:const(nil, 'no label')):set('negate')
+            args.immediate = self:const(nil, 'no label'):set('negate')
         elseif c == 'K' and not args.immediate then
-            args.immediate = Token(self:const(nil, 'no label')):set('signed')
+            args.immediate = self:const(nil, 'no label'):set('signed')
         elseif c == 'b' and not args.base then
             args.base = self:deref():set('tt', 'REG')
         else
@@ -356,9 +356,21 @@ local assembled_directives = {
     ['!ORG'] = true,
 }
 
+function Dumper:fill(length, content)
+    self:validate(content, 8)
+    local bytes = {}
+    for i=1, length do
+        insert(bytes, content)
+    end
+    local t = Token(self.fn, self.line, 'BYTES', bytes)
+    local s = Statement(self.fn, self.line, '!DATA', t)
+    return s
+end
+
 function Dumper:load(statements)
     self.labels = {}
 
+    local pos = 0
     local new_statements = {}
     for i=1, #statements do
         local s = statements[i]
@@ -366,16 +378,57 @@ function Dumper:load(statements)
         self.line = s.line
         if s.type:sub(1, 1) == '!' then
             if s.type == '!LABEL' then
-                self.labels[s[1].tok] = i
+                self.labels[s[1].tok] = pos
             elseif s.type == '!DATA' then
-                -- noop
+                pos = pos + util.measure_data(s)
+                insert(new_statements, s)
+            elseif s.type == '!ORG' then
+                pos = s[1].tok
+                insert(new_statements, s)
+            elseif s.type == '!ALIGN' or s.type == '!SKIP' then
+                local length, content
+                if s.type == '!ALIGN' then
+                    local align = s[1] and s[1].tok or 2
+                    content = s[2] and s[2].tok or 0
+                    if align < 0 then
+                        self:error('negative alignment')
+                    else
+                        align = 2^align
+                    end
+                    local temp = pos + align - 1
+                    length = temp - (temp % align) - pos
+                else
+                    length = s[1] and s[1].tok or 0
+                    content = s[2] and s[2].tok or nil
+                end
+
+                if content == nil then
+                    pos = pos + length
+                    local new = Statement(self.fn, self.line, '!ORG', pos)
+                    insert(new_statements, new)
+                elseif length > 0 then
+                    insert(new_statements, self:fill(length, content))
+                elseif length < 0 then
+                    pos = pos + length
+                    local new = Statement(self.fn, self.line, '!ORG', pos)
+                    insert(new_statements, new)
+                    insert(new_statements, self:fill(length, content))
+                    local new = Statement(self.fn, self.line, '!ORG', pos)
+                    insert(new_statements, new)
+                else
+                    -- length is 0, noop
+                end
             else
-                -- TODO: internal error?
-                self:error('unknown statement', s.type)
+                error('Internal Error: unknown statement, got '..s.type)
             end
+        else
+            pos = pos + 4
+            insert(new_statements, s)
         end
     end
 
+    statements = new_statements
+    new_statements = {}
     -- TODO: keep track of lengths here?
     self.pos = 0
     for i=1, #statements do
@@ -383,19 +436,29 @@ function Dumper:load(statements)
         self.fn = s.fn
         self.line = s.line
         if s.type:sub(1, 1) ~= '!' then
-            s = self:assemble(s)
+            local new = self:assemble(s)
+            insert(new_statements, new)
+            self.pos = self.pos + 4
+        elseif s.type == '!DATA' then
+            for i, t in ipairs(s) do
+                if t.tt == 'LABEL' then
+                    local label = self.labels[t.tok]
+                    if label == nil then
+                        self:error('undefined label', t.tok)
+                    end
+                    t.tt = 'WORDS'
+                    t.tok = {self.labels[t.tok]}
+                end
+            end
             insert(new_statements, s)
-            self.pos = self.pos + 4 -- FIXME: assumes no pseudo-ops
-        elseif assembled_directives[s.type] then
-            -- FIXME: check for LABELs in !DATA
-            -- TODO: reimplement ALIGN and SKIP here
+            self.pos = self.pos + util.measure_data(s)
+        elseif s.type == '!ORG' then
             insert(new_statements, s)
-            self.pos = self.pos + s:length()
+            self.pos = s[1].tok
         elseif s.type == '!LABEL' then
             -- noop
         else
-            print(s.type)
-            error('Internal Error: unknown statement found in Dumper')
+            error('Internal Error: unknown statement, got '..s.type)
         end
     end
 
@@ -426,7 +489,7 @@ function Dumper:dump()
                     end
                 elseif t.tt == 'BYTES' then
                     for _, b in ipairs(t.tok) do
-                        local b0 = bitrange(h, 0, 7)
+                        local b0 = bitrange(b, 0, 7)
                         self:write{b0}
                     end
                 else
@@ -434,7 +497,7 @@ function Dumper:dump()
                 end
             end
         elseif s.type == '!ORG' then
-            self.pos = s[1]
+            self.pos = s[1].tok
         end
     end
 
