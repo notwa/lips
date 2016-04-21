@@ -39,55 +39,6 @@ function Dumper:advance(by)
     self.pos = self.pos + by
 end
 
---[[
-function Dumper:add_directive(fn, line, name, a, b)
-    self.fn = fn
-    self.line = line
-    local t = {}
-    t.fn = self.fn
-    t.line = self.line
-    if name == 'BYTE' then
-    elseif name == 'HALFWORD' then
-    elseif name == 'WORD' then
-        if type(a) == 'string' then
-            t.kind = 'label'
-            t.name = a
-            insert(self.commands, t)
-            self:advance(4)
-        end
-    elseif name == 'ORG' then
-        t.kind = 'goto'
-        t.addr = a
-        insert(self.commands, t)
-        self.pos = a
-        self:advance(0)
-    elseif name == 'ALIGN' then
-        t.kind = 'ahead'
-        local align
-        if a == 0 then
-            align = 4
-        elseif a < 0 then
-            self:error('negative alignment')
-        else
-            align = 2^a
-        end
-        local temp = self.pos + align - 1
-        t.skip = temp - (temp % align) - self.pos
-        t.fill = b and b % 0x100 or 0
-        insert(self.commands, t)
-        self:advance(t.skip)
-    elseif name == 'SKIP' then
-        t.kind = 'ahead'
-        t.skip = a
-        t.fill = b and b % 0x100 or nil
-        insert(self.commands, t)
-        self:advance(t.skip)
-    else
-        self:error('unimplemented directive')
-    end
-end
---]]
-
 function Dumper:desym(t)
     if t.tt == 'REL' then
         local target = t.tok % 0x80000000
@@ -335,14 +286,6 @@ function Dumper:assemble(s)
     local name = s.type
     local h = data.instructions[name]
     self.s = s
---    if overrides[name] then
---        --overrides[name](self, name)
---        local s = Statement(self.fn, self.line, '!DATA') -- FIXME: dummy
---        return s
---    elseif h[2] == 'tob' then -- TODO: or h[2] == 'Tob' then
---        local s = Statement(self.fn, self.line, '!DATA') -- FIXME: dummy
---        return s
---    elseif h[2] ~= nil then
     if h[2] ~= nil then
         local args = self:format_in(h[2])
         return self:format_out(h, args)
@@ -500,27 +443,6 @@ function Dumper:dump()
             self.pos = s[1].tok
         end
     end
-
-    --[[
-        elseif t.kind == 'goto' then
-            self.pos = t.addr
-        elseif t.kind == 'ahead' then
-            if t.fill then
-                for i=1, t.skip do
-                    self:write{t.fill}
-                end
-            else
-                self.pos = self.pos + t.skip
-            end
-        elseif t.kind == 'label' then
-            local val = self:desym{tt='LABELSYM', tok=t.name}
-            val = (val % 0x80000000) + 0x80000000
-            local b0 = bitrange(val, 0, 7)
-            local b1 = bitrange(val, 8, 15)
-            local b2 = bitrange(val, 16, 23)
-            local b3 = bitrange(val, 24, 31)
-            self:write{b3, b2, b1, b0}
-    --]]
 end
 
 return Dumper

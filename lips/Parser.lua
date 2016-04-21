@@ -17,63 +17,6 @@ function Parser:init(writer, fn, options)
     self.options = options or {}
 end
 
---[[
-function Parser:instruction()
-    local name = self.tok
-    local h = data.instructions[name]
-    assert(h, 'Internal Error: undefined instruction')
-    self:advance()
-
-    if overrides[name] then
-        overrides[name](self, name)
-    elseif h[2] == 'tob' then -- TODO: or h[2] == 'Tob' then
-        -- handle all the addressing modes for lw/sw-like instructions
-        local lui = data.instructions['LUI']
-        local addu = data.instructions['ADDU']
-        local args = {}
-        args.rt = self:register()
-        self:optional_comma()
-        if self.tt == 'OPEN' then
-            args.offset = 0
-            args.base = self:deref()
-        else -- NUM or LABELSYM
-            local lui_args = {}
-            local addu_args = {}
-            local o = self:const()
-            if self.tt == 'NUM' then
-                o:set('offset', self:const().tok)
-            end
-            args.offset = self:token(o)
-            if not o.portion then
-                args.offset:set('portion', 'lower')
-            end
-            -- attempt to use the fewest possible instructions for this offset
-            if not o.portion and (o.tt == 'LABELSYM' or o.tok >= 0x80000000) then
-                lui_args.immediate = Token(o):set('portion', 'upperoff')
-                lui_args.rt = 'AT'
-                self:format_out(lui, lui_args)
-                if not self:is_EOL() then
-                    addu_args.rd = 'AT'
-                    addu_args.rs = 'AT'
-                    addu_args.rt = self:deref()
-                    self:format_out(addu, addu_args)
-                end
-                args.base = 'AT'
-            else
-                args.base = self:deref()
-            end
-        end
-        self:format_out(h, args)
-    elseif h[2] ~= nil then
-        local args = self:format_in(h[2])
-        self:format_out(h, args)
-    else
-        self:error('unimplemented instruction')
-    end
-    self:expect_EOL()
-end
---]]
-
 function Parser:tokenize(asm)
     local lexer = Lexer(asm, self.main_fn, self.options)
     local tokens = {}
