@@ -3,7 +3,7 @@ local Base = require(path.."Base")
 local Token = require(path.."Token")
 
 local Reader = Base:extend()
--- no init method
+-- no base init method
 
 -- Reader expects self.s to be set to a statement, and self.i to a token index
 

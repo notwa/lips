@@ -6,8 +6,6 @@ local unpack = unpack or table.unpack
 local path = string.gsub(..., "[^.]+$", "")
 local data = require(path.."data")
 local util = require(path.."util")
---local overrides = require(path.."overrides")
-local Base = require(path.."Base")
 local Token = require(path.."Token")
 local Statement = require(path.."Statement")
 local Reader = require(path.."Reader")
@@ -290,11 +288,6 @@ function Dumper:assemble(s)
     end
 end
 
-local assembled_directives = {
-    ['!DATA'] = true,
-    ['!ORG'] = true,
-}
-
 function Dumper:fill(length, content)
     self:validate(content, 8)
     local bytes = {}
@@ -386,7 +379,7 @@ function Dumper:load(statements)
                     t.tok = {label}
                 end
             end
-            self.pos = self.pos + s.length
+            self.pos = self.pos + (s.length or util.measure_data(s))
             insert(new_statements, s)
         elseif s.type == '!ORG' then
             self.pos = s[1].tok
@@ -406,7 +399,6 @@ function Dumper:dump()
     -- TODO: have options insert .org and/or .base; pos is always 0 at start
     self.pos = self.options.offset or 0
     for i, s in ipairs(self.statements) do
-        assert(assembled_directives[s.type], 'Internal Error: unassembled statement')
         if s.type == '!DATA' then
             for j, t in ipairs(s) do
                 if t.tt == 'WORDS' then
@@ -434,6 +426,8 @@ function Dumper:dump()
             end
         elseif s.type == '!ORG' then
             self.pos = s[1].tok
+        else
+            error('Internal Error: cannot dump unassembled statement')
         end
     end
 end

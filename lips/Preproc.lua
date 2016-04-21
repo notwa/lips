@@ -3,8 +3,6 @@ local insert = table.insert
 local path = string.gsub(..., "[^.]+$", "")
 local data = require(path.."data")
 local overrides = require(path.."overrides")
-local Base = require(path.."Base")
-local Token = require(path.."Token")
 local Statement = require(path.."Statement")
 local Reader = require(path.."Reader")
 
@@ -20,23 +18,6 @@ local function signs(s)
     elseif s:sub(1, 1) == '-' then
         return -end_
     end
-end
-
-local function unsigns(n)
-    if n > 0 then
-        return string.rep('+', n)
-    elseif n < 0 then
-        return string.rep('-', -n)
-    else
-        return ''
-    end
-end
-
-local function RelativeLabel(index, name)
-    return {
-        index = index,
-        name = name,
-    }
 end
 
 local Preproc = Reader:extend()
@@ -95,7 +76,7 @@ function Preproc:lookup(t)
             end
 
             if seen ~= rel then
-                self:error('could not find appropriate relative label', unsigns(rel))
+                self:error('could not find appropriate relative label', t.tok)
             end
         end
     else
@@ -149,7 +130,10 @@ function Preproc:process(statements)
             elseif s.type == '!LABEL' then
                 if s[1].tt == 'RELLABEL' then
                     local label = s[1].tok
-                    local rl = RelativeLabel(#new_statements + 1, label:sub(2))
+                    local rl = {
+                        index = #new_statements + 1,
+                        name = label:sub(2)
+                    }
                     local c = label:sub(1, 1)
                     if c == '+' then
                         insert(self.plus_labels, rl)
@@ -236,7 +220,6 @@ function Preproc:expand(statements)
         self.fn = s.fn
         self.line = s.line
         if s.type:sub(1, 1) == '!' then
-            -- TODO
             self:push(s)
         else
             local name = s.type

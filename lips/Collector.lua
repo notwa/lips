@@ -23,8 +23,7 @@ function Collector:statement(...)
     return s
 end
 
-function Collector:push_data(data, size)
-    -- FIXME: local 'data' name clashes with lips.data
+function Collector:push_data(datum, size)
     --[[ pseudo-example:
     Statement{type='!DATA',
         {tt='BYTES', tok={0, 1, 2}},
@@ -45,9 +44,9 @@ function Collector:push_data(data, size)
         insert(self.statements, s)
     end
 
-    if type(data) == 'string' and size == 'WORD' then
+    if type(datum) == 'string' and size == 'WORD' then
         -- labels will be assembled to words
-        insert(s, Token('LABEL', data))
+        insert(s, Token('LABEL', datum))
         return
     end
 
@@ -66,7 +65,7 @@ function Collector:push_data(data, size)
         insert(s, t)
         s:validate()
     end
-    insert(t.tok, data)
+    insert(t.tok, datum)
 end
 
 function Collector:variable()

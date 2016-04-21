@@ -46,7 +46,6 @@ function Statement:validate(n)
     for i, v in ipairs(self) do
         if util.parent(v) ~= Token then
             self[i] = Token(self.fn, self.line, v)
-            --error(('Internal Error: Statement[%i] is not a Token'):format(i), n)
         end
     end
 end

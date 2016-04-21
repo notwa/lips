@@ -1,7 +1,6 @@
 local insert = table.insert
 
 local path = string.gsub(..., "[^.]+$", "")
-local data = require(path.."data")
 local Base = require(path.."Base")
 local Token = require(path.."Token")
 local Lexer = require(path.."Lexer")

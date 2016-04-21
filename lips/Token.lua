@@ -35,19 +35,24 @@ function Token:init(...)
     else
         error('Internal Error: init takes 1, 3 or 4 arguments', 3)
     end
+    self:validate(1)
+    return self
+end
+
+function Token:validate(n)
+    n = (n or 0) + 3 -- depth for error message
     if not self.fn then
-        error('Internal Error: tokens require a filename', 3)
+        error('Internal Error: tokens require a filename', n)
     end
     if not self.line then
-        error('Internal Error: tokens require a line number', 3)
+        error('Internal Error: tokens require a line number', n)
     end
     if not self.tt then
-        error('Internal Error: token is missing a type', 3)
+        error('Internal Error: token is missing a type', n)
     end
     if not self.tok then
-        error('Internal Error: token is missing a value', 3)
+        error('Internal Error: token is missing a value', n)
     end
-    return self
 end
 
 function Token:set(key, value)
