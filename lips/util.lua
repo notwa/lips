@@ -43,14 +43,16 @@ local function measure_data(s)
     assert(s and s.type == '!DATA', 'Internal Error: expected !DATA statement')
     local n = 0
     for i, t in ipairs(s) do
-        if t.type == 'LABEL' then
+        if t.tt == 'LABEL' then
             n = n + 4
-        elseif t.type == 'WORDS' then
+        elseif t.tt == 'WORDS' then
             n = n + #t.tok * 4
-        elseif t.type == 'HALFWORDS' then
+        elseif t.tt == 'HALFWORDS' then
             n = n + #t.tok * 2
-        elseif t.type == 'BYTES' then
+        elseif t.tt == 'BYTES' then
             n = n + #t.tok * 1
+        else
+            error('Internal Error: unknown data type in !DATA')
         end
     end
     return n

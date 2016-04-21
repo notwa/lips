@@ -88,7 +88,7 @@ function Collector:directive()
         add(name, self:const(nil, 'no labels'))
     elseif name == 'ALIGN' or name == 'SKIP' then
         if self:is_EOL() and name == 'ALIGN' then
-            add(name, self:token('NUM', 0))
+            add(name)
         else
             local size = self:number()
             if self:is_EOL() then

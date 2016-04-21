@@ -35,10 +35,6 @@ function Dumper:export_labels(t)
     return t
 end
 
-function Dumper:advance(by)
-    self.pos = self.pos + by
-end
-
 function Dumper:desym(t)
     if t.tt == 'REL' then
         local target = t.tok % 0x80000000
@@ -313,7 +309,7 @@ end
 function Dumper:load(statements)
     self.labels = {}
 
-    local pos = 0
+    local pos = self.options.offset or 0
     local new_statements = {}
     for i=1, #statements do
         local s = statements[i]
@@ -345,14 +341,13 @@ function Dumper:load(statements)
                     content = s[2] and s[2].tok or nil
                 end
 
+                pos = pos + length
                 if content == nil then
-                    pos = pos + length
                     local new = Statement(self.fn, self.line, '!ORG', pos)
                     insert(new_statements, new)
                 elseif length > 0 then
                     insert(new_statements, self:fill(length, content))
                 elseif length < 0 then
-                    pos = pos + length
                     local new = Statement(self.fn, self.line, '!ORG', pos)
                     insert(new_statements, new)
                     insert(new_statements, self:fill(length, content))
@@ -372,16 +367,15 @@ function Dumper:load(statements)
 
     statements = new_statements
     new_statements = {}
-    -- TODO: keep track of lengths here?
-    self.pos = 0
+    self.pos = self.options.offset or 0
     for i=1, #statements do
         local s = statements[i]
         self.fn = s.fn
         self.line = s.line
         if s.type:sub(1, 1) ~= '!' then
             local new = self:assemble(s)
-            insert(new_statements, new)
             self.pos = self.pos + 4
+            insert(new_statements, new)
         elseif s.type == '!DATA' then
             for i, t in ipairs(s) do
                 if t.tt == 'LABEL' then
@@ -390,14 +384,14 @@ function Dumper:load(statements)
                         self:error('undefined label', t.tok)
                     end
                     t.tt = 'WORDS'
-                    t.tok = {self.labels[t.tok]}
+                    t.tok = {label}
                 end
             end
-            insert(new_statements, s)
             self.pos = self.pos + util.measure_data(s)
-        elseif s.type == '!ORG' then
             insert(new_statements, s)
+        elseif s.type == '!ORG' then
             self.pos = s[1].tok
+            insert(new_statements, s)
         elseif s.type == '!LABEL' then
             -- noop
         else
