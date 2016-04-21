@@ -2,9 +2,11 @@ local insert = table.insert
 
 local path = string.gsub(..., "[^.]+$", "")
 local data = require(path.."data")
+local overrides = require(path.."overrides")
 local Base = require(path.."Base")
 local Token = require(path.."Token")
 local Statement = require(path.."Statement")
+local Reader = require(path.."Reader")
 
 local abs = math.abs
 
@@ -37,16 +39,9 @@ local function RelativeLabel(index, name)
     }
 end
 
-local Preproc = Base:extend()
+local Preproc = Reader:extend()
 function Preproc:init(options)
     self.options = options or {}
-end
-
-function Preproc:error(msg, got)
-    if got ~= nil then
-        msg = msg..', got '..tostring(got)
-    end
-    error(('%s:%d: Error: %s'):format(self.fn, self.line, msg), 2)
 end
 
 function Preproc:lookup(t)
@@ -110,6 +105,8 @@ function Preproc:lookup(t)
 end
 
 function Preproc:check(s, i, tt)
+    s = s or self.s
+    i = i or self.i
     local t = s[i]
     if t == nil then
         self:error("expected another argument")
@@ -187,7 +184,77 @@ function Preproc:process(statements)
         end
     end
 
-    self.statements = new_statements
+    return new_statements
+end
+
+function Preproc:statement(...)
+    self.fn = self.s.fn
+    self.line = self.s.line
+    local s = Statement(self.fn, self.line, ...)
+    return s
+end
+
+function Preproc:push(s)
+    s:validate()
+    insert(self.statements, s)
+end
+
+function Preproc:push_new(...)
+    self:push(self:statement(...))
+end
+
+function Preproc:pop(kind)
+    local ret
+    if kind == nil then
+        -- noop
+    elseif kind == 'CPU' then
+        ret = self:register(data.registers)
+    elseif kind == 'DEREF' then
+        ret = self:deref()
+    elseif kind == 'CONST' then
+        ret = self:const()
+    elseif kind == 'REL' then
+        ret = self:const('REL')
+    elseif kind == 'END' then
+        if self.s[self.i + 1] ~= nil then
+            self:error('too many arguments')
+        end
+        return -- don't increment self.i past end of arguments
+    else
+        error('Internal Error: unknown kind, got '..tostring(kind))
+    end
+    self.i = self.i + 1
+    return ret
+end
+
+function Preproc:expand(statements)
+    -- third pass: expand pseudo-instructions
+    self.statements = {}
+    for i=1, #statements do
+        local s = statements[i]
+        self.s = s
+        self.fn = s.fn
+        self.line = s.line
+        if s.type:sub(1, 1) == '!' then
+            -- TODO
+            self:push(s)
+        else
+            local name = s.type
+            local h = data.instructions[name]
+            if h == nil then
+                error('Internal Error: unknown instruction')
+            end
+
+            if overrides[name] then
+                self.i = 1
+                overrides[name](self, name)
+                self:pop('END')
+            else
+                self:push(s)
+            end
+        end
+    end
+
     return self.statements
 end
 

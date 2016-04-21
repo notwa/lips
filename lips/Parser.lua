@@ -103,12 +103,7 @@ function Parser:parse(asm)
 
     local preproc = Preproc(self.options)
     self.statements = preproc:process(self.statements)
-
-    --[[ process:
-- inline labels? how do you know how far they are?
-                 i guess you can just offset on statements instead
-- assemble? dumper gets passed .org .base
---]]
+    self.statements = preproc:expand(self.statements)
 
     -- DEBUG
     for i, s in ipairs(self.statements) do

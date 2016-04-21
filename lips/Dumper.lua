@@ -6,14 +6,15 @@ local unpack = unpack or table.unpack
 local path = string.gsub(..., "[^.]+$", "")
 local data = require(path.."data")
 local util = require(path.."util")
-local overrides = require(path.."overrides")
+--local overrides = require(path.."overrides")
 local Base = require(path.."Base")
 local Token = require(path.."Token")
 local Statement = require(path.."Statement")
+local Reader = require(path.."Reader")
 
 local bitrange = util.bitrange
 
-local Dumper = Base:extend()
+local Dumper = Reader:extend()
 function Dumper:init(writer, options)
     self.writer = writer
     self.options = options or {}
@@ -21,13 +22,6 @@ function Dumper:init(writer, options)
     self.commands = {}
     self.pos = options.offset or 0
     self.lastcommand = nil
-end
-
-function Dumper:error(msg, got)
-    if got ~= nil then
-        msg = msg..', got '..tostring(got)
-    end
-    error(('%s:%d: Error: %s'):format(self.fn, self.line, msg), 2)
 end
 
 function Dumper:export_labels(t)
@@ -225,62 +219,6 @@ function Dumper:dump_instruction(t)
     return uw, lw
 end
 
-function Dumper:expect(tts)
-    local t = self.s[self.i]
-    if t == nil then
-        self:error("expected another argument") -- TODO: more verbose
-    end
-
-    self.fn = t.fn
-    self.line = t.line
-
-    for _, tt in pairs(tts) do
-        if t.tt == tt then
-            return t.ok
-        end
-    end
-
-    --local err = ("argument %i of %s expected type %s"):format(self.i, self.s.type, tt)
-    local err = ("unexpected type for argument %i of %s"):format(self.i, self.s.type)
-    self:error(err, t.tt)
-end
-
-function Dumper:register(registers)
-    self:expect{'REG'}
-    local t = self.s[self.i]
-    local numeric = registers[t.tok]
-    if not numeric then
-        self:error('wrong type of register')
-    end
-    return Token(t)
-end
-
-function Dumper:const(relative, no_label)
-    if no_label then
-        self:expect{'NUM'}
-    else
-        self:expect{'NUM', 'LABELSYM'}
-    end
-    local t = self.s[self.i]
-    local new = Token(t)
-    if relative then
-        if t.tt == 'LABELSYM' then
-            new.t = 'LABELREL'
-        else
-            new.t = 'REL'
-        end
-    end
-    return new
-end
-
-function Dumper:deref()
-    self:expect{'DEREF'}
-    local t = self.s[self.i]
-    local new = Token(t)
-    new.tt = 'REG'
-    return new
-end
-
 function Dumper:assemble_j(first, out)
     local w = 0
     w = w + self:valvar(first,   6) * 0x04000000
@@ -318,7 +256,7 @@ function Dumper:format_in(informat)
     local args = {}
     --if #informat ~= #s then error('mismatch') end
     for i=1, #informat do
-        self.i = i -- FIXME: do we need this?
+        self.i = i
         local c = informat:sub(i, i)
         if c == 'd' and not args.rd then
             args.rd = self:register(data.registers)
@@ -351,7 +289,7 @@ function Dumper:format_in(informat)
         elseif c == 'K' and not args.immediate then
             args.immediate = Token(self:const(nil, 'no label')):set('signed')
         elseif c == 'b' and not args.base then
-            args.base = self:deref()
+            args.base = self:deref():set('tt', 'REG')
         else
             error('Internal Error: invalid input formatting string')
         end
@@ -397,14 +335,15 @@ function Dumper:assemble(s)
     local name = s.type
     local h = data.instructions[name]
     self.s = s
-    if overrides[name] then
-        --overrides[name](self, name)
-        local s = Statement(self.fn, self.line, '!DATA') -- FIXME: dummy
-        return s
-    elseif h[2] == 'tob' then -- TODO: or h[2] == 'Tob' then
-        local s = Statement(self.fn, self.line, '!DATA') -- FIXME: dummy
-        return s
-    elseif h[2] ~= nil then
+--    if overrides[name] then
+--        --overrides[name](self, name)
+--        local s = Statement(self.fn, self.line, '!DATA') -- FIXME: dummy
+--        return s
+--    elseif h[2] == 'tob' then -- TODO: or h[2] == 'Tob' then
+--        local s = Statement(self.fn, self.line, '!DATA') -- FIXME: dummy
+--        return s
+--    elseif h[2] ~= nil then
+    if h[2] ~= nil then
         local args = self:format_in(h[2])
         return self:format_out(h, args)
     else
@@ -446,10 +385,12 @@ function Dumper:load(statements)
         if s.type:sub(1, 1) ~= '!' then
             s = self:assemble(s)
             insert(new_statements, s)
+            self.pos = self.pos + 4 -- FIXME: assumes no pseudo-ops
         elseif assembled_directives[s.type] then
             -- FIXME: check for LABELs in !DATA
             -- TODO: reimplement ALIGN and SKIP here
             insert(new_statements, s)
+            self.pos = self.pos + s:length()
         elseif s.type == '!LABEL' then
             -- noop
         else
