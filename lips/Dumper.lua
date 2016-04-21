@@ -307,8 +307,6 @@ function Dumper:fill(length, content)
 end
 
 function Dumper:load(statements)
-    self.labels = {}
-
     local pos = self.options.offset or 0
     local new_statements = {}
     for i=1, #statements do
@@ -319,7 +317,8 @@ function Dumper:load(statements)
             if s.type == '!LABEL' then
                 self.labels[s[1].tok] = pos
             elseif s.type == '!DATA' then
-                pos = pos + util.measure_data(s)
+                s.length = util.measure_data(s) -- cache for next pass
+                pos = pos + s.length
                 insert(new_statements, s)
             elseif s.type == '!ORG' then
                 pos = s[1].tok
@@ -387,7 +386,7 @@ function Dumper:load(statements)
                     t.tok = {label}
                 end
             end
-            self.pos = self.pos + util.measure_data(s)
+            self.pos = self.pos + s.length
             insert(new_statements, s)
         elseif s.type == '!ORG' then
             self.pos = s[1].tok
