@@ -224,15 +224,15 @@ overrides.BNEIL = overrides.BEQI
 
 function overrides.BLTI(self, name)
     local branch = branch_basics[name]
-    local rs = self:pop('CPU')
+    local reg = self:pop('CPU')
     local immediate = self:pop('CONST')
     local offset = self:pop('REL'):set('signed')
 
-    if rs == 'AT' then
+    if reg == 'AT' then
         self:error('register cannot be AT in this pseudo-instruction')
     end
 
-    self:push_new('SLTI', 'AT', reg)
+    self:push_new('SLTI', 'AT', reg, immediate)
 
     self:push_new(branch, 'R0', 'AT', offset)
 end
@@ -257,11 +257,12 @@ function overrides.BLEI(self, name)
     if name == 'BLEI' then
         beq_offset = offset
     else
+        -- FIXME: this probably isn't correct for branch-likely instructions
         beq_offset = 2 -- branch to delay slot of the next branch
     end
     self:push_new('BEQ', reg, 'R0', beq_offset)
 
-    self:push_new('SLT', 'AT', reg)
+    self:push_new('SLT', 'AT', reg, immediate)
 
     self:push_new(branch, 'AT', 'R0', offset)
 end
