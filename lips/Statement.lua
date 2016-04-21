@@ -50,4 +50,9 @@ function Statement:validate(n)
     end
 end
 
+-- TODO: just move push_data into Statement too
+function Statement:length()
+    assert(self.type == '!DATA', 'Statement:length only works on !DATA types')
+end
+
 return Statement

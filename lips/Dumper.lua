@@ -135,6 +135,10 @@ function Dumper:desym(t)
 end
 
 function Dumper:toval(t)
+    if type(t) == 'number' then
+        return t
+    end
+
     assert(type(t) == 'table', 'Internal Error: invalid value')
 
     local val = self:desym(t)
@@ -248,36 +252,61 @@ function Dumper:register(registers)
     if not numeric then
         self:error('wrong type of register')
     end
-    --self:advance()
-    return numeric
+    return Token(t)
+end
+
+function Dumper:const(relative, no_label)
+    if no_label then
+        self:expect{'NUM'}
+    else
+        self:expect{'NUM', 'LABELSYM'}
+    end
+    local t = self.s[self.i]
+    local new = Token(t)
+    if relative then
+        if t.tt == 'LABELSYM' then
+            new.t = 'LABELREL'
+        else
+            new.t = 'REL'
+        end
+    end
+    return new
+end
+
+function Dumper:deref()
+    self:expect{'DEREF'}
+    local t = self.s[self.i]
+    local new = Token(t)
+    new.tt = 'REG'
+    return new
 end
 
 function Dumper:assemble_j(first, out)
     local w = 0
-    w = w + self:validate(first,   6) * 0x04000000
-    w = w + self:validate(out[1], 26) * 0x00000001
+    w = w + self:valvar(first,   6) * 0x04000000
+    w = w + self:valvar(out[1], 26) * 0x00000001
     local t = Token(self.fn, self.line, 'WORDS', {w})
     local s = Statement(self.fn, self.line, '!DATA', t)
     return s
 end
 function Dumper:assemble_i(first, out)
     local w = 0
-    w = w + self:validate(first,   6) * 0x04000000
-    w = w + self:validate(out[1],  5) * 0x00200000
-    w = w + self:validate(out[2],  5) * 0x00010000
-    w = w + self:validate(out[3], 16) * 0x00000001
+    w = w + self:valvar(first,   6) * 0x04000000
+    w = w + self:valvar(out[1],  5) * 0x00200000
+    w = w + self:valvar(out[2],  5) * 0x00010000
+    w = w + self:valvar(out[3], 16) * 0x00000001
     local t = Token(self.fn, self.line, 'WORDS', {w})
     local s = Statement(self.fn, self.line, '!DATA', t)
     return s
 end
 function Dumper:assemble_r(first, out)
     local w = 0
-    w = w + self:validate(first,   6) * 0x04000000
-    w = w + self:validate(out[1],  5) * 0x00200000
-    w = w + self:validate(out[2],  5) * 0x00010000
-    w = w + self:validate(out[3],  5) * 0x00000800
-    w = w + self:validate(out[4],  5) * 0x00000040
-    w = w + self:validate(out[5],  6) * 0x00000001
+    w = w + self:valvar(first,   6) * 0x04000000
+    w = w + self:valvar(out[1],  5) * 0x00200000
+    w = w + self:valvar(out[2],  5) * 0x00010000
+    w = w + self:valvar(out[3],  5) * 0x00000800
+    w = w + self:valvar(out[4],  5) * 0x00000040
+    w = w + self:valvar(out[5],  6) * 0x00000001
     local t = Token(self.fn, self.line, 'WORDS', {w})
     local s = Statement(self.fn, self.line, '!DATA', t)
     return s
@@ -310,19 +339,19 @@ function Dumper:format_in(informat)
         elseif c == 'Z' and not args.rt then
             args.rt = self:register(data.sys_registers)
         elseif c == 'o' and not args.offset then
-            args.offset = 0 --Token(self:const()):set('signed')
+            args.offset = Token(self:const()):set('signed')
         elseif c == 'r' and not args.offset then
-            args.offset = 0 --Token(self:const('relative')):set('signed')
+            args.offset = Token(self:const('relative')):set('signed')
         elseif c == 'i' and not args.immediate then
-            args.immediate = 0 --self:const(nil, 'no label')
+            args.immediate = self:const(nil, 'no label')
         elseif c == 'I' and not args.index then
-            args.index = 0 --Token(self:const()):set('index')
+            args.index = Token(self:const()):set('index')
         elseif c == 'k' and not args.immediate then
-            args.immediate = 0 --Token(self:const(nil, 'no label')):set('negate')
+            args.immediate = Token(self:const(nil, 'no label')):set('negate')
         elseif c == 'K' and not args.immediate then
-            args.immediate = 0 --Token(self:const(nil, 'no label')):set('signed')
+            args.immediate = Token(self:const(nil, 'no label')):set('signed')
         elseif c == 'b' and not args.base then
-            args.base = 0 --self:deref()
+            args.base = self:deref()
         else
             error('Internal Error: invalid input formatting string')
         end
@@ -338,34 +367,21 @@ function Dumper:format_out_raw(outformat, first, args, const, formatconst)
         [5]=self.assemble_r,
     }
     local out = {}
-    for i=1,#outformat do
+    for i=1, #outformat do
         local c = outformat:sub(i, i)
-        if c == 'd' then
-            out[#out+1] = args.rd
-        elseif c == 's' then
-            out[#out+1] = args.rs
-        elseif c == 't' then
-            out[#out+1] = args.rt
-        elseif c == 'D' then
-            out[#out+1] = args.fd
-        elseif c == 'S' then
-            out[#out+1] = args.fs
-        elseif c == 'T' then
-            out[#out+1] = args.ft
-        elseif c == 'o' then
-            out[#out+1] = args.offset
-        elseif c == 'i' then
-            out[#out+1] = args.immediate
-        elseif c == 'I' then
-            out[#out+1] = args.index
-        elseif c == 'b' then
-            out[#out+1] = args.base
-        elseif c == '0' then
-            out[#out+1] = 0
-        elseif c == 'C' then
-            out[#out+1] = const
-        elseif c == 'F' then
-            out[#out+1] = formatconst
+        if c == 'd' then out[#out+1] = args.rd
+        elseif c == 's' then insert(out, args.rs)
+        elseif c == 't' then insert(out, args.rt)
+        elseif c == 'D' then insert(out, args.fd)
+        elseif c == 'S' then insert(out, args.fs)
+        elseif c == 'T' then insert(out, args.ft)
+        elseif c == 'o' then insert(out, args.offset)
+        elseif c == 'i' then insert(out, args.immediate)
+        elseif c == 'I' then insert(out, args.index)
+        elseif c == 'b' then insert(out, args.base)
+        elseif c == '0' then insert(out, 0)
+        elseif c == 'C' then insert(out, const)
+        elseif c == 'F' then insert(out, formatconst)
         end
     end
     local f = lookup[#outformat]
@@ -383,6 +399,9 @@ function Dumper:assemble(s)
     self.s = s
     if overrides[name] then
         --overrides[name](self, name)
+        local s = Statement(self.fn, self.line, '!DATA') -- FIXME: dummy
+        return s
+    elseif h[2] == 'tob' then -- TODO: or h[2] == 'Tob' then
         local s = Statement(self.fn, self.line, '!DATA') -- FIXME: dummy
         return s
     elseif h[2] ~= nil then
@@ -418,17 +437,24 @@ function Dumper:load(statements)
         end
     end
 
-    -- TODO: keep track of self.pos and lengths here
+    -- TODO: keep track of lengths here?
+    self.pos = 0
     for i=1, #statements do
         local s = statements[i]
         self.fn = s.fn
         self.line = s.line
         if s.type:sub(1, 1) ~= '!' then
-            insert(new_statements, self:assemble(s))
+            s = self:assemble(s)
+            insert(new_statements, s)
         elseif assembled_directives[s.type] then
             -- FIXME: check for LABELs in !DATA
             -- TODO: reimplement ALIGN and SKIP here
             insert(new_statements, s)
+        elseif s.type == '!LABEL' then
+            -- noop
+        else
+            print(s.type)
+            error('Internal Error: unknown statement found in Dumper')
         end
     end
 

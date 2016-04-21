@@ -110,9 +110,6 @@ function Parser:parse(asm)
 - assemble? dumper gets passed .org .base
 --]]
 
-    local dumper = Dumper(self.writer, self.options)
-    self.statements = dumper:load(self.statements)
-
     -- DEBUG
     for i, s in ipairs(self.statements) do
         local values = ''
@@ -122,6 +119,9 @@ function Parser:parse(asm)
         values = values:sub(2)
         print(i, s.type, values)
     end
+
+    local dumper = Dumper(self.writer, self.options)
+    self.statements = dumper:load(self.statements)
 
     --if self.options.labels then
     --    dumper:export_labels(self.options.labels)
