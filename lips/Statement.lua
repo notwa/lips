@@ -9,7 +9,7 @@ function Statement:init(...)
     if #args == 1 then
         local t = args[1]
         if util.parent(t) ~= Statement then
-            error('Internal Error: 1-arg Statement:init expected a Statement')
+            error('Internal Error: 1-arg Statement:init expected a Statement', 3)
         end
         if type(t) == 'table' then
             for k, v in pairs(t) do

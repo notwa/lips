@@ -1,18 +1,21 @@
 local floor = math.floor
 local format = string.format
 local insert = table.insert
+local unpack = unpack or table.unpack
 
 local path = string.gsub(..., "[^.]+$", "")
 local data = require(path.."data")
 local util = require(path.."util")
+local overrides = require(path.."overrides")
 local Base = require(path.."Base")
+local Token = require(path.."Token")
+local Statement = require(path.."Statement")
 
 local bitrange = util.bitrange
 
 local Dumper = Base:extend()
-function Dumper:init(writer, fn, options)
+function Dumper:init(writer, options)
     self.writer = writer
-    self.fn = fn or '(string)'
     self.options = options or {}
     self.labels = setmetatable({}, {__index=options.labels})
     self.commands = {}
@@ -20,8 +23,11 @@ function Dumper:init(writer, fn, options)
     self.lastcommand = nil
 end
 
-function Dumper:error(msg)
-    error(format('%s:%d: Error: %s', self.fn, self.line, msg), 2)
+function Dumper:error(msg, got)
+    if got ~= nil then
+        msg = msg..', got '..tostring(got)
+    end
+    error(('%s:%d: Error: %s'):format(self.fn, self.line, msg), 2)
 end
 
 function Dumper:export_labels(t)
@@ -39,51 +45,7 @@ function Dumper:advance(by)
     self.pos = self.pos + by
 end
 
-function Dumper:push_instruction(t)
-    t.kind = 'instruction'
-    insert(self.commands, t)
-    self:advance(4)
-end
-
-function Dumper:add_instruction_j(fn, line, o, T)
-    self:push_instruction{fn=fn, line=line, o, T}
-end
-
-function Dumper:add_instruction_i(fn, line, o, s, t, i)
-    self:push_instruction{fn=fn, line=line, o, s, t, i}
-end
-
-function Dumper:add_instruction_r(fn, line, o, s, t, d, f, c)
-    self:push_instruction{fn=fn, line=line, o, s, t, d, f, c}
-end
-
-function Dumper:add_label(name)
-    self.labels[name] = self.pos
-end
-
-function Dumper:add_bytes(line, ...)
-    local use_last = self.lastcommand and self.lastcommand.kind == 'bytes'
-    local t
-    if use_last then
-        t = self.lastcommand
-    else
-        t = {}
-        t.kind = 'bytes'
-        t.size = 0
-        t.fn = self.fn
-        t.line = self.line
-    end
-    t.line = line
-    for _, b in ipairs{...} do
-        t.size = t.size + 1
-        t[t.size] = b
-    end
-    if not use_last then
-        insert(self.commands, t)
-    end
-    self:advance(t.size)
-end
-
+--[[
 function Dumper:add_directive(fn, line, name, a, b)
     self.fn = fn
     self.line = line
@@ -91,23 +53,13 @@ function Dumper:add_directive(fn, line, name, a, b)
     t.fn = self.fn
     t.line = self.line
     if name == 'BYTE' then
-        self:add_bytes(line, a % 0x100)
     elseif name == 'HALFWORD' then
-        local b0 = bitrange(a, 0, 7)
-        local b1 = bitrange(a, 8, 15)
-        self:add_bytes(line, b1, b0)
     elseif name == 'WORD' then
         if type(a) == 'string' then
             t.kind = 'label'
             t.name = a
             insert(self.commands, t)
             self:advance(4)
-        else
-            local b0 = bitrange(a, 0, 7)
-            local b1 = bitrange(a, 8, 15)
-            local b2 = bitrange(a, 16, 23)
-            local b3 = bitrange(a, 24, 31)
-            self:add_bytes(line, b3, b2, b1, b0)
         end
     elseif name == 'ORG' then
         t.kind = 'goto'
@@ -140,6 +92,7 @@ function Dumper:add_directive(fn, line, name, a, b)
         self:error('unimplemented directive')
     end
 end
+--]]
 
 function Dumper:desym(t)
     if t.tt == 'REL' then
@@ -223,14 +176,14 @@ function Dumper:validate(n, bits)
         self:error('value is nil') -- internal error?
     end
     if n > max or n < 0 then
-        self:error('value out of range')
+        self:error('value out of range', n)
     end
+    return n
 end
 
 function Dumper:valvar(t, bits)
     local val = self:toval(t)
-    self:validate(val, bits)
-    return val
+    return self:validate(val, bits)
 end
 
 function Dumper:write(t)
@@ -268,22 +221,257 @@ function Dumper:dump_instruction(t)
     return uw, lw
 end
 
+function Dumper:expect(tts)
+    local t = self.s[self.i]
+    if t == nil then
+        self:error("expected another argument") -- TODO: more verbose
+    end
+
+    self.fn = t.fn
+    self.line = t.line
+
+    for _, tt in pairs(tts) do
+        if t.tt == tt then
+            return t.ok
+        end
+    end
+
+    --local err = ("argument %i of %s expected type %s"):format(self.i, self.s.type, tt)
+    local err = ("unexpected type for argument %i of %s"):format(self.i, self.s.type)
+    self:error(err, t.tt)
+end
+
+function Dumper:register(registers)
+    self:expect{'REG'}
+    local t = self.s[self.i]
+    local numeric = registers[t.tok]
+    if not numeric then
+        self:error('wrong type of register')
+    end
+    --self:advance()
+    return numeric
+end
+
+function Dumper:assemble_j(first, out)
+    local w = 0
+    w = w + self:validate(first,   6) * 0x04000000
+    w = w + self:validate(out[1], 26) * 0x00000001
+    local t = Token(self.fn, self.line, 'WORDS', {w})
+    local s = Statement(self.fn, self.line, '!DATA', t)
+    return s
+end
+function Dumper:assemble_i(first, out)
+    local w = 0
+    w = w + self:validate(first,   6) * 0x04000000
+    w = w + self:validate(out[1],  5) * 0x00200000
+    w = w + self:validate(out[2],  5) * 0x00010000
+    w = w + self:validate(out[3], 16) * 0x00000001
+    local t = Token(self.fn, self.line, 'WORDS', {w})
+    local s = Statement(self.fn, self.line, '!DATA', t)
+    return s
+end
+function Dumper:assemble_r(first, out)
+    local w = 0
+    w = w + self:validate(first,   6) * 0x04000000
+    w = w + self:validate(out[1],  5) * 0x00200000
+    w = w + self:validate(out[2],  5) * 0x00010000
+    w = w + self:validate(out[3],  5) * 0x00000800
+    w = w + self:validate(out[4],  5) * 0x00000040
+    w = w + self:validate(out[5],  6) * 0x00000001
+    local t = Token(self.fn, self.line, 'WORDS', {w})
+    local s = Statement(self.fn, self.line, '!DATA', t)
+    return s
+end
+
+-- NOTE: we could move format_{in,out} to its own virtual class and inherit it
+function Dumper:format_in(informat)
+    -- see data.lua for a guide on what all these mean
+    local args = {}
+    --if #informat ~= #s then error('mismatch') end
+    for i=1, #informat do
+        self.i = i -- FIXME: do we need this?
+        local c = informat:sub(i, i)
+        if c == 'd' and not args.rd then
+            args.rd = self:register(data.registers)
+        elseif c == 's' and not args.rs then
+            args.rs = self:register(data.registers)
+        elseif c == 't' and not args.rt then
+            args.rt = self:register(data.registers)
+        elseif c == 'D' and not args.fd then
+            args.fd = self:register(data.fpu_registers)
+        elseif c == 'S' and not args.fs then
+            args.fs = self:register(data.fpu_registers)
+        elseif c == 'T' and not args.ft then
+            args.ft = self:register(data.fpu_registers)
+        elseif c == 'X' and not args.rd then
+            args.rd = self:register(data.sys_registers)
+        elseif c == 'Y' and not args.rs then
+            args.rs = self:register(data.sys_registers)
+        elseif c == 'Z' and not args.rt then
+            args.rt = self:register(data.sys_registers)
+        elseif c == 'o' and not args.offset then
+            args.offset = 0 --Token(self:const()):set('signed')
+        elseif c == 'r' and not args.offset then
+            args.offset = 0 --Token(self:const('relative')):set('signed')
+        elseif c == 'i' and not args.immediate then
+            args.immediate = 0 --self:const(nil, 'no label')
+        elseif c == 'I' and not args.index then
+            args.index = 0 --Token(self:const()):set('index')
+        elseif c == 'k' and not args.immediate then
+            args.immediate = 0 --Token(self:const(nil, 'no label')):set('negate')
+        elseif c == 'K' and not args.immediate then
+            args.immediate = 0 --Token(self:const(nil, 'no label')):set('signed')
+        elseif c == 'b' and not args.base then
+            args.base = 0 --self:deref()
+        else
+            error('Internal Error: invalid input formatting string')
+        end
+    end
+    return args
+end
+
+function Dumper:format_out_raw(outformat, first, args, const, formatconst)
+    -- see data.lua for a guide on what all these mean
+    local lookup = {
+        [1]=self.assemble_j,
+        [3]=self.assemble_i,
+        [5]=self.assemble_r,
+    }
+    local out = {}
+    for i=1,#outformat do
+        local c = outformat:sub(i, i)
+        if c == 'd' then
+            out[#out+1] = args.rd
+        elseif c == 's' then
+            out[#out+1] = args.rs
+        elseif c == 't' then
+            out[#out+1] = args.rt
+        elseif c == 'D' then
+            out[#out+1] = args.fd
+        elseif c == 'S' then
+            out[#out+1] = args.fs
+        elseif c == 'T' then
+            out[#out+1] = args.ft
+        elseif c == 'o' then
+            out[#out+1] = args.offset
+        elseif c == 'i' then
+            out[#out+1] = args.immediate
+        elseif c == 'I' then
+            out[#out+1] = args.index
+        elseif c == 'b' then
+            out[#out+1] = args.base
+        elseif c == '0' then
+            out[#out+1] = 0
+        elseif c == 'C' then
+            out[#out+1] = const
+        elseif c == 'F' then
+            out[#out+1] = formatconst
+        end
+    end
+    local f = lookup[#outformat]
+    assert(f, 'Internal Error: invalid output formatting string')
+    return f(self, first, out)
+end
+
+function Dumper:format_out(t, args)
+    return self:format_out_raw(t[3], t[1], args, t[4], t[5])
+end
+
+function Dumper:assemble(s)
+    local name = s.type
+    local h = data.instructions[name]
+    self.s = s
+    if overrides[name] then
+        --overrides[name](self, name)
+        local s = Statement(self.fn, self.line, '!DATA') -- FIXME: dummy
+        return s
+    elseif h[2] ~= nil then
+        local args = self:format_in(h[2])
+        return self:format_out(h, args)
+    else
+        self:error('unimplemented instruction', name)
+    end
+end
+
+local assembled_directives = {
+    ['!DATA'] = true,
+    ['!ORG'] = true,
+}
+
+function Dumper:load(statements)
+    self.labels = {}
+
+    local new_statements = {}
+    for i=1, #statements do
+        local s = statements[i]
+        self.fn = s.fn
+        self.line = s.line
+        if s.type:sub(1, 1) == '!' then
+            if s.type == '!LABEL' then
+                self.labels[s[1].tok] = i
+            elseif s.type == '!DATA' then
+                -- noop
+            else
+                -- TODO: internal error?
+                self:error('unknown statement', s.type)
+            end
+        end
+    end
+
+    -- TODO: keep track of self.pos and lengths here
+    for i=1, #statements do
+        local s = statements[i]
+        self.fn = s.fn
+        self.line = s.line
+        if s.type:sub(1, 1) ~= '!' then
+            insert(new_statements, self:assemble(s))
+        elseif assembled_directives[s.type] then
+            -- FIXME: check for LABELs in !DATA
+            -- TODO: reimplement ALIGN and SKIP here
+            insert(new_statements, s)
+        end
+    end
+
+    self.statements = new_statements
+    return self.statements
+end
+
 function Dumper:dump()
+    -- TODO: have options insert .org and/or .base; pos is always 0 at start
     self.pos = self.options.offset or 0
-    for i, t in ipairs(self.commands) do
-        assert(t.fn, 'Internal Error: no file name available')
-        assert(t.line, 'Internal Error: no line number available')
-        self.fn = t.fn
-        self.line = t.line
-        if t.kind == 'instruction' then
-            local uw, lw = self:dump_instruction(t)
-            local b0 = bitrange(lw, 0, 7)
-            local b1 = bitrange(lw, 8, 15)
-            local b2 = bitrange(uw, 0, 7)
-            local b3 = bitrange(uw, 8, 15)
-            self:write{b3, b2, b1, b0}
-        elseif t.kind == 'bytes' then
-            self:write(t)
+    for i, s in ipairs(self.statements) do
+        assert(assembled_directives[s.type], 'Internal Error: unassembled statement')
+        if s.type == '!DATA' then
+            for j, t in ipairs(s) do
+                if t.tt == 'WORDS' then
+                    for _, w in ipairs(t.tok) do
+                        local b0 = bitrange(w, 0, 7)
+                        local b1 = bitrange(w, 8, 15)
+                        local b2 = bitrange(w, 16, 23)
+                        local b3 = bitrange(w, 24, 31)
+                        self:write{b3, b2, b1, b0}
+                    end
+                elseif t.tt == 'HALFWORDS' then
+                    for _, h in ipairs(t.tok) do
+                        local b0 = bitrange(h, 0, 7)
+                        local b1 = bitrange(h, 8, 15)
+                        self:write{b1, b0}
+                    end
+                elseif t.tt == 'BYTES' then
+                    for _, b in ipairs(t.tok) do
+                        local b0 = bitrange(h, 0, 7)
+                        self:write{b0}
+                    end
+                else
+                    error('Internal Error: unknown !DATA token')
+                end
+            end
+        elseif s.type == '!ORG' then
+            self.pos = s[1]
+        end
+    end
+
+    --[[
         elseif t.kind == 'goto' then
             self.pos = t.addr
         elseif t.kind == 'ahead' then
@@ -302,10 +490,7 @@ function Dumper:dump()
             local b2 = bitrange(val, 16, 23)
             local b3 = bitrange(val, 24, 31)
             self:write{b3, b2, b1, b0}
-        else
-            error('Internal Error: unknown command')
-        end
-    end
+    --]]
 end
 
 return Dumper

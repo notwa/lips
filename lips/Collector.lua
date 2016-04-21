@@ -1,5 +1,4 @@
 local insert = table.insert
-local unpack = unpack or table.unpack
 
 local path = string.gsub(..., "[^.]+$", "")
 local Token = require(path.."Token")
@@ -22,10 +21,6 @@ end
 function Collector:statement(...)
     local s = Statement(self.fn, self.line, ...)
     return s
-end
-
-function Collector:format_out(t, args)
-    self:format_out_raw(t[3], t[1], args, t[4], t[5])
 end
 
 function Collector:push_data(data, size)

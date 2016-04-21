@@ -43,21 +43,11 @@ function Preproc:init(options)
 end
 
 function Preproc:error(msg, got)
-        if got ~= nil then
+    if got ~= nil then
         msg = msg..', got '..tostring(got)
     end
     error(('%s:%d: Error: %s'):format(self.fn, self.line, msg), 2)
 end
-
---[[
-function Preproc:advance()
-    self.i = self.i + 1
-    self.s = self.statements[self.i]
-    self.fn = self.s.fn
-    self.line = self.s.line
-    return self.s
-end
---]]
 
 function Preproc:lookup(t)
     if t.tt == 'VARSYM' then
@@ -130,12 +120,6 @@ function Preproc:check(s, i, tt)
 
     if t.tt ~= tt then
         self:lookup(t)
-        --[[
-        local newtt, newtok = self:lookup(argtt, argtok)
-        if newtt and newtok then
-            argtt, argtok = newtt, newtok
-        end
-        --]]
     end
 
     if t.tt ~= tt then
@@ -179,17 +163,13 @@ function Preproc:process(statements)
                     end
                 end
                 insert(new_statements, s)
+            else
+                insert(new_statements, s)
             end
         else
             -- regular instruction
             for j, t in ipairs(s) do
                 self:lookup(t)
-                --[[
-                local newtt, newtok = self:lookup(t.tt, t.tok)
-                if newtt and newtok then
-                else
-                end
-                --]]
             end
             insert(new_statements, s)
         end
