@@ -188,27 +188,32 @@ function Parser:tokenize(asm)
         end)
     end
 
+    -- the lexer guarantees an EOL and EOF for a blank file
+    assert(#tokens > 0, 'Internal Error: no tokens after preprocessing')
+
     local collector = Collector(self.options)
     local statements = collector:collect(tokens, self.main_fn)
 
-    --[[
     local preproc = Preproc(self.options)
     self.statements = preproc:process(statements)
-
-    -- the lexer guarantees an EOL and EOF for a blank file
-    assert(#self.tokens > 0, 'Internal Error: no tokens after preprocessing')
-    --]]
-    self.statements = statements
 end
 
 function Parser:parse(asm)
     self:tokenize(asm)
 
+    --[[ process:
+- inline constants
+- inline variables
+- inline labels? how do you know how far they are?
+                 i guess you can just offset on labels instead
+- assemble? dumper gets passed .org .base
+--]]
+
     -- DEBUG
     for i, s in ipairs(self.statements) do
         local values = ''
         for j, v in ipairs(s) do
-            values = values..'\t'..v.tt
+            values = values..'\t'..v.tt..'('..v.tok..')'
         end
         values = values:sub(2)
         print(i, s.type, values)
