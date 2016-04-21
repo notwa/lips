@@ -16,7 +16,11 @@ local function tob_override(self, name)
     else -- NUM or LABELSYM
         local o = self:pop('CONST')
         if self:peek('NUM') then
-            o:set('offset', self:pop('CONST').tok)
+            local temp, err = self:pop('CONST'):compute()
+            if err then
+                self:error(err, temp)
+            end
+            o:set('offset', temp)
         end
         offset = self:token(o)
         if not o.portion then

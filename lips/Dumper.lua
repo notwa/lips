@@ -73,47 +73,6 @@ function Dumper:desym(t)
     error('Internal Error: failed to desym')
 end
 
-function Dumper:toval(t)
-    if type(t) == 'number' then
-        return t
-    end
-
-    assert(type(t) == 'table', 'Internal Error: invalid value')
-
-    local val = self:desym(t)
-
-    if t.index then
-        val = val % 0x80000000
-        val = floor(val/4)
-    end
-    if t.negate then
-        val = -val
-    end
-
-    if t.portion == 'upper' then
-        val = bitrange(val, 16, 31)
-    elseif t.portion == 'lower' then
-        val = bitrange(val, 0, 15)
-    elseif t.portion == 'upperoff' then
-        local upper = bitrange(val, 16, 31)
-        local lower = bitrange(val, 0, 15)
-        if lower >= 0x8000 then
-            -- accommodate for offsets being signed
-            upper = (upper + 1) % 0x10000
-        end
-        val = upper
-    end
-
-    if t.negate or t.signed then
-        if val >= 0x10000 or val < -0x8000 then
-            self:error('value out of range', val)
-        end
-        val = val % 0x10000
-    end
-
-    return val
-end
-
 function Dumper:validate(n, bits)
     local max = 2^bits
     if n == nil then
@@ -126,7 +85,16 @@ function Dumper:validate(n, bits)
 end
 
 function Dumper:valvar(t, bits)
-    local val = self:toval(t)
+    local val = t
+    local err
+    if type(val) ~= 'number' then
+        t.tok = self:desym(t)
+        t.tt = 'NUM'
+        val, err = t:compute()
+        if err then
+            self:error(err, val)
+        end
+    end
     return self:validate(val, bits)
 end
 

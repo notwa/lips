@@ -160,8 +160,9 @@ function Collector:instruction()
         elseif self.tt == 'UNARY' then
             local peek = self.tokens[self.i + 1]
             if peek.tt == 'VARSYM' then
+                local negate = t.tok == -1
                 t = self:advance()
-                t = Token(t):set('negate')
+                t = Token(t):set('negate', negate)
                 insert(s, t)
                 self:advance()
             elseif peek.tt == 'EOL' or peek.tt == 'SEP' then
