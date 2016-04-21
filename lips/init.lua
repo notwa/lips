@@ -45,6 +45,17 @@ function lips.assemble(fn_or_asm, writer, options)
     options = options or {}
 
     local function main()
+        if options.offset then
+            if options.origin or options.base then
+                error('offset and origin/base options are mutually exclusive')
+            end
+            io.stderr:write('Warning: options.offset is deprecated.\n')
+            options.origin = options.offset
+            options.base = 0
+        else
+            options.base = options.base or 0x80000000
+        end
+
         local fn = nil
         local asm
         if fn_or_asm:find('[\r\n]') then
@@ -62,8 +73,6 @@ function lips.assemble(fn_or_asm, writer, options)
             writer()
         end
     end
-
-    options.base = options.base or 0x80000000
 
     if options.unsafe then
         return main()
