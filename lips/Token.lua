@@ -72,6 +72,7 @@ function Token:compute()
     assert(self.tt == 'NUM', 'Internal Error: cannot compute a non-number token')
     local n = self.tok
     if self.index then
+        -- TODO: should this still be here now that we have .base?
         n = n % 0x80000000
         n = floor(n/4)
     end

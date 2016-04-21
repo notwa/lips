@@ -63,6 +63,8 @@ function lips.assemble(fn_or_asm, writer, options)
         end
     end
 
+    options.base = options.base or 0x80000000
+
     if options.unsafe then
         return main()
     else

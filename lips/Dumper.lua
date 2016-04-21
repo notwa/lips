@@ -12,14 +12,22 @@ local Reader = require(path.."Reader")
 
 local bitrange = util.bitrange
 
+local function label_delta(from, to)
+    -- TODO: consider removing the % here since .base should handle that now
+    to = to
+    from = from
+    return floor(to/4) - 1 - floor(from/4)
+end
+
 local Dumper = Reader:extend()
 function Dumper:init(writer, options)
     self.writer = writer
     self.options = options or {}
     self.labels = setmetatable({}, {__index=options.labels})
     self.commands = {}
-    self.pos = options.offset or 0
     self.lastcommand = nil
+    self.pos = 0
+    self.base = 0
 end
 
 function Dumper:export_labels(t)
@@ -35,9 +43,7 @@ end
 
 function Dumper:desym(t)
     if t.tt == 'REL' then
-        local target = t.tok % 0x80000000
-        local pos = self.pos % 0x80000000
-        local rel = floor(target/4) - 1 - floor(pos/4)
+        local rel = label_delta(self:pc(), t.tok)
         if rel > 0x8000 or rel <= -0x8000 then
             self:error('branch too far')
         end
@@ -62,9 +68,7 @@ function Dumper:desym(t)
             return label
         end
 
-        label = label % 0x80000000
-        local pos = self.pos % 0x80000000
-        local rel = floor(label/4) - 1 - floor(pos/4)
+        local rel = label_delta(self:pc(), label)
         if rel > 0x8000 or rel <= -0x8000 then
             self:error('branch too far')
         end
@@ -79,7 +83,7 @@ function Dumper:validate(n, bits)
         self:error('value is nil') -- internal error?
     end
     if n > max or n < 0 then
-        self:error('value out of range', n)
+        self:error('value out of range', ("%X"):format(n))
     end
     return n
 end
@@ -267,22 +271,30 @@ function Dumper:fill(length, content)
     return s
 end
 
+function Dumper:pc()
+    return self.pos + self.base
+end
+
 function Dumper:load(statements)
-    local pos = self.options.offset or 0
     local new_statements = {}
+    self.pos = 0
+    self.base = 0
     for i=1, #statements do
         local s = statements[i]
         self.fn = s.fn
         self.line = s.line
         if s.type:sub(1, 1) == '!' then
             if s.type == '!LABEL' then
-                self.labels[s[1].tok] = pos
+                self.labels[s[1].tok] = self:pc()
             elseif s.type == '!DATA' then
                 s.length = util.measure_data(s) -- cache for next pass
-                pos = pos + s.length
+                self.pos = self.pos + s.length
                 insert(new_statements, s)
             elseif s.type == '!ORG' then
-                pos = s[1].tok
+                self.pos = s[1].tok
+                insert(new_statements, s)
+            elseif s.type == '!BASE' then
+                self.base = s[1].tok
                 insert(new_statements, s)
             elseif s.type == '!ALIGN' or s.type == '!SKIP' then
                 local length, content
@@ -294,24 +306,24 @@ function Dumper:load(statements)
                     else
                         align = 2^align
                     end
-                    local temp = pos + align - 1
-                    length = temp - (temp % align) - pos
+                    local temp = self:pc() + align - 1
+                    length = temp - (temp % align) - self:pc()
                 else
                     length = s[1] and s[1].tok or 0
                     content = s[2] and s[2].tok or nil
                 end
 
-                pos = pos + length
+                self.pos = self.pos + length
                 if content == nil then
-                    local new = Statement(self.fn, self.line, '!ORG', pos)
+                    local new = Statement(self.fn, self.line, '!ORG', self.pos)
                     insert(new_statements, new)
                 elseif length > 0 then
                     insert(new_statements, self:fill(length, content))
                 elseif length < 0 then
-                    local new = Statement(self.fn, self.line, '!ORG', pos)
+                    local new = Statement(self.fn, self.line, '!ORG', self.pos)
                     insert(new_statements, new)
                     insert(new_statements, self:fill(length, content))
-                    local new = Statement(self.fn, self.line, '!ORG', pos)
+                    local new = Statement(self.fn, self.line, '!ORG', self.pos)
                     insert(new_statements, new)
                 else
                     -- length is 0, noop
@@ -320,14 +332,16 @@ function Dumper:load(statements)
                 error('Internal Error: unknown statement, got '..s.type)
             end
         else
-            pos = pos + 4
+            self.pos = self.pos + 4
             insert(new_statements, s)
         end
     end
 
     statements = new_statements
+
     new_statements = {}
-    self.pos = self.options.offset or 0
+    self.pos = 0
+    self.base = 0
     for i=1, #statements do
         local s = statements[i]
         self.fn = s.fn
@@ -352,6 +366,8 @@ function Dumper:load(statements)
         elseif s.type == '!ORG' then
             self.pos = s[1].tok
             insert(new_statements, s)
+        elseif s.type == '!BASE' then
+            self.base = s[1].tok
         elseif s.type == '!LABEL' then
             -- noop
         else
@@ -364,8 +380,8 @@ function Dumper:load(statements)
 end
 
 function Dumper:dump()
-    -- TODO: have options insert .org and/or .base; pos is always 0 at start
-    self.pos = self.options.offset or 0
+    self.pos = 0
+    self.base = nil
     for i, s in ipairs(self.statements) do
         if s.type == '!DATA' then
             for j, t in ipairs(s) do

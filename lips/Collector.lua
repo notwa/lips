@@ -83,7 +83,7 @@ function Collector:directive()
     local function add(kind, ...)
         insert(self.statements, self:statement('!'..kind, ...))
     end
-    if name == 'ORG' then
+    if name == 'ORG' or name == 'BASE' then
         add(name, self:const(nil, 'no labels'))
     elseif name == 'ALIGN' or name == 'SKIP' then
         if self:is_EOL() and name == 'ALIGN' then
@@ -198,6 +198,16 @@ function Collector:collect(tokens, fn)
     self.main_fn = self.fn
 
     self.statements = {}
+
+    -- this works, but probably shouldn't be in this function specifically
+    if self.options.offset then
+        local s = Statement('(options)', 0, '!ORG', self.options.offset)
+        insert(self.statements, s)
+    end
+    if self.options.base then
+        local s = Statement('(options)', 0, '!BASE', self.options.base)
+        insert(self.statements, s)
+    end
 
     self.i = 0 -- set up Muncher iteration
     self:advance() -- load up the first token

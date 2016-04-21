@@ -216,9 +216,13 @@ if `fill` is omitted, no bytes are overwritten,
 and only the position is changed.
 
 * `.org {address}`  
-set the current address for writing to; seek.
-until lips is a little more optimized,
-be cautious of seeking to large addresses.
+set the current address for writing to; seek to origin.
+
+* `.base {offset}`  
+sets a virtual offset relative to the origin (.org).
+defaults to 0x80000000.
+this allows you to have a PC value different from origin:
+`PC = origin + base`
 
 * `HEX { ... }`  
 write a series of bytes given in hexadecimal.
