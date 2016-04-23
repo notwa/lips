@@ -1,6 +1,7 @@
 local floor = math.floor
 local format = string.format
 local insert = table.insert
+local remove = table.remove
 local unpack = unpack or table.unpack
 
 local path = string.gsub(..., "[^.]+$", "")
@@ -276,6 +277,7 @@ function Dumper:pc()
 end
 
 function Dumper:load(statements)
+    local valstack = {} -- for .push/.pop directives
     local new_statements = {}
     self.pos = 0
     self.base = 0
@@ -296,6 +298,51 @@ function Dumper:load(statements)
             elseif s.type == '!BASE' then
                 self.base = s[1].tok
                 insert(new_statements, s)
+            elseif s.type == '!PUSH' or s.type == '!POP' then
+                local thistype = s.type:sub(2):lower()
+                for i, t in ipairs(s) do
+                    local name = t.tok
+                    if type(name) ~= 'string' then
+                        self:error('expected state to '..thistype, name)
+                    end
+
+                    name = name:lower()
+                    local pushing = s.type == '!PUSH'
+                    if name == 'org' then
+                        if pushing then
+                            insert(valstack, self.pos)
+                        else
+                            self.pos = remove(valstack)
+                        end
+                    elseif name == 'base' then
+                        if pushing then
+                            insert(valstack, self.base)
+                        else
+                            self.base = remove(valstack)
+                        end
+                    elseif name == 'pc' then
+                        if pushing then
+                            insert(valstack, self.pos)
+                            insert(valstack, self.base)
+                        else
+                            self.base = remove(valstack)
+                            self.pos = remove(valstack)
+                        end
+                    else
+                        self:error('unknown state to '..thistype, name)
+                    end
+
+                    if self.pos == nil or self.base == nil then
+                        self:error('ran out of values to pop')
+                    end
+
+                    if not pushing then
+                        local s = Statement(self.fn, self.line, '!ORG', self.pos)
+                        insert(new_statements, s)
+                        local s = Statement(self.fn, self.line, '!BASE', self.base)
+                        insert(new_statements, s)
+                    end
+                end
             elseif s.type == '!ALIGN' or s.type == '!SKIP' then
                 local length, content
                 if s.type == '!ALIGN' then

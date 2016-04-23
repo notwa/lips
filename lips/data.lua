@@ -30,6 +30,7 @@ data.fpu_registers = {
 
 data.all_directives = {
     'ORG', 'BASE', 'ALIGN', 'SKIP',
+    'PUSH', 'POP', -- experimental
     'ASCII', 'ASCIIZ',
     'BYTE', 'HALFWORD', 'WORD',
     --'HEX', -- excluded here due to different syntax

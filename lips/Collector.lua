@@ -85,6 +85,12 @@ function Collector:directive()
     end
     if name == 'ORG' or name == 'BASE' then
         add(name, self:const(nil, 'no labels'))
+    elseif name == 'PUSH' or name == 'POP' then
+        add(name, self:const())
+        while not self:is_EOL() do
+            self:optional_comma()
+            add(name, self:const())
+        end
     elseif name == 'ALIGN' or name == 'SKIP' then
         if self:is_EOL() and name == 'ALIGN' then
             add(name)
