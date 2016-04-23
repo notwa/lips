@@ -102,16 +102,13 @@ function Collector:directive()
                 self:optional_comma()
                 add(name, size, self:number())
             end
-            self:expect_EOL()
         end
     elseif name == 'BYTE' or name == 'HALFWORD' or name == 'WORD' then
         self:push_data(self:const().tok, name)
         while not self:is_EOL() do
-            self:advance()
             self:optional_comma()
             self:push_data(self:const().tok, name)
         end
-        self:expect_EOL()
     elseif name == 'INC' or name == 'INCBIN' then
         -- noop, handled by lexer
     elseif name == 'ASCII' or name == 'ASCIIZ' then
@@ -122,12 +119,12 @@ function Collector:directive()
         if name == 'ASCIIZ' then
             self:push_data(0, 'BYTE')
         end
-        self:expect_EOL()
     elseif name == 'FLOAT' then
         self:error('unimplemented directive', name)
     else
         self:error('unknown directive', name)
     end
+    self:expect_EOL()
 end
 
 function Collector:basic_special()
