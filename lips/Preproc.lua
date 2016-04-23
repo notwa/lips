@@ -90,7 +90,8 @@ function Preproc:check(s, i, tt)
     i = i or self.i
     local t = s[i]
     if t == nil then
-        self:error("expected another argument")
+        local err = ("expected another argument for %s at position %i"):format(self.s.type, self.i)
+        self:error(err)
     end
 
     self.fn = t.fn

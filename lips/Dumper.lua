@@ -13,13 +13,6 @@ local Reader = require(path.."Reader")
 
 local bitrange = util.bitrange
 
-local function label_delta(from, to)
-    -- TODO: consider removing the % here since .base should handle that now
-    to = to
-    from = from
-    return floor(to/4) - 1 - floor(from/4)
-end
-
 local Dumper = Reader:extend()
 function Dumper:init(writer, options)
     self.writer = writer
@@ -42,13 +35,17 @@ function Dumper:export_labels(t)
     return t
 end
 
+function Dumper:label_delta(from, to)
+    local rel = floor(to/4) - 1 - floor(from/4)
+    if rel > 0x8000 or rel <= -0x8000 then
+        self:error('branch too far', rel)
+    end
+    return rel % 0x10000
+end
+
 function Dumper:desym(t)
     if t.tt == 'REL' then
-        local rel = label_delta(self:pc(), t.tok)
-        if rel > 0x8000 or rel <= -0x8000 then
-            self:error('branch too far')
-        end
-        return rel % 0x10000
+        return self:label_delta(self:pc(), t.tok)
     elseif type(t.tok) == 'number' then
         if t.offset then
             return t.tok + t.offset
@@ -69,11 +66,7 @@ function Dumper:desym(t)
             return label
         end
 
-        local rel = label_delta(self:pc(), label)
-        if rel > 0x8000 or rel <= -0x8000 then
-            self:error('branch too far')
-        end
-        return rel % 0x10000
+        return self:label_delta(self:pc(), label)
     end
     error('Internal Error: failed to desym')
 end
@@ -81,7 +74,7 @@ end
 function Dumper:validate(n, bits)
     local max = 2^bits
     if n == nil then
-        self:error('value is nil') -- internal error?
+        error('Internal Error: number to validate is nil', 2)
     end
     if n > max or n < 0 then
         self:error('value out of range', ("%X"):format(n))
@@ -108,34 +101,6 @@ function Dumper:write(t)
         self.writer(self.pos, b)
         self.pos = self.pos + 1
     end
-end
-
-function Dumper:dump_instruction(t)
-    local uw = 0
-    local lw = 0
-
-    local o = t[1]
-    uw = uw + o*0x400
-
-    if #t == 2 then
-        local val = self:valvar(t[2], 26)
-        uw = uw + bitrange(val, 16, 25)
-        lw = lw + bitrange(val, 0, 15)
-    elseif #t == 4 then
-        uw = uw + self:valvar(t[2], 5)*0x20
-        uw = uw + self:valvar(t[3], 5)
-        lw = lw + self:valvar(t[4], 16)
-    elseif #t == 6 then
-        uw = uw + self:valvar(t[2], 5)*0x20
-        uw = uw + self:valvar(t[3], 5)
-        lw = lw + self:valvar(t[4], 5)*0x800
-        lw = lw + self:valvar(t[5], 5)*0x40
-        lw = lw + self:valvar(t[6], 6)
-    else
-        error('Internal Error: unknown n-size')
-    end
-
-    return uw, lw
 end
 
 function Dumper:assemble_j(first, out)
@@ -349,7 +314,7 @@ function Dumper:load(statements)
                     local align = s[1] and s[1].tok or 2
                     content = s[2] and s[2].tok or 0
                     if align < 0 then
-                        self:error('negative alignment')
+                        self:error('negative alignment', align)
                     else
                         align = 2^align
                     end

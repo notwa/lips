@@ -249,7 +249,7 @@ function Lexer:lex_string(yield)
     local bytes = {}
     while true do
         if self.chr == '\n' then
-            self:error('unimplemented')
+            self:error('unimplemented: newlines in strings')
             yield('EOL', '\n')
             self:nextc()
         elseif self.ord == self.EOF then
