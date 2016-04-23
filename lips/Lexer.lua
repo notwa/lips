@@ -193,11 +193,13 @@ function Lexer:lex_hex(yield)
             end
             self:nextc()
             entered = true
+            yield('OPEN', '{')
         elseif self.chr == '}' then
             if not entered then
                 self:error('expected opening brace')
             end
             self:nextc()
+            yield('CLOSE', '}')
             break
         elseif self.chr == ',' then
             self:error('commas are not allowed in HEX directives')
@@ -208,7 +210,6 @@ function Lexer:lex_hex(yield)
             if self.chr:find(hexmatch) then
                 self:error('too many hex digits to be a single byte')
             end
-            yield('DIR', 'BYTE')
             yield('NUM', num)
         elseif self.chr:find(hexmatch) then
             self:error('expected two hex digits to make a byte')
@@ -294,6 +295,8 @@ function Lexer:lex_include(_yield)
     self:lex_string_naive(function(tt, tok)
         fn = tok
     end)
+    _yield('STRING', fn, self.fn, self.line)
+
     if self.options.path then
         fn = self.options.path..fn
     end
@@ -307,6 +310,8 @@ function Lexer:lex_include_binary(_yield)
     self:lex_string_naive(function(tt, tok)
         fn = tok
     end)
+    _yield('STRING', fn, self.fn, self.line)
+
     -- TODO: allow optional offset and size arguments
     if self.options.path then
         fn = self.options.path..fn
@@ -414,6 +419,7 @@ function Lexer:lex(_yield)
                 self:nextc()
                 yield('LABEL', buff)
             elseif up == 'HEX' then
+                yield('DIR', 'HEX')
                 self:lex_hex(yield)
             elseif data.all_registers[up] then
                 yield('REG', up)

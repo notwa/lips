@@ -109,8 +109,24 @@ function Collector:directive()
             self:optional_comma()
             self:push_data(self:const().tok, name)
         end
+    elseif name == 'HEX' then
+        if self.tt ~= 'OPEN' then
+            self:error('expected opening brace for hex directive', self.tt)
+        end
+        self:advance()
+
+        while self.tt ~= 'CLOSE' do
+            if self.tt == 'EOL' then
+                self:advance()
+            else
+                self:push_data(self:const().tok, 'BYTE')
+            end
+        end
+        self:advance()
     elseif name == 'INC' or name == 'INCBIN' then
         -- noop, handled by lexer
+        self:string()
+        return -- don't expect EOL
     elseif name == 'ASCII' or name == 'ASCIIZ' then
         local bytes = self:string()
         for i, number in ipairs(bytes.tok) do
