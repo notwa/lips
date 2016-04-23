@@ -262,7 +262,7 @@ function overrides.BLEI(self, name)
     end
     self:push_new('BEQ', reg, 'R0', beq_offset)
 
-    self:push_new('SLT', 'AT', reg, immediate)
+    self:push_new('SLTI', 'AT', reg, immediate)
 
     self:push_new(branch, 'AT', 'R0', offset)
 end
