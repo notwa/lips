@@ -1,6 +1,6 @@
 package.path = package.path..";?/init.lua"
 local lips = require "lips"
-local err = lips('example.asm', nil, {offset=0})
+local err = lips('example.asm')
 if err then
     print(err)
 end

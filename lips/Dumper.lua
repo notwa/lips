@@ -45,7 +45,7 @@ end
 
 function Dumper:desym(t)
     if t.tt == 'REL' then
-        return self:label_delta(self:pc(), t.tok)
+        return t.tok
     elseif type(t.tok) == 'number' then
         if t.offset then
             return t.tok + t.offset
