@@ -365,13 +365,17 @@ function Dumper:load(statements)
             insert(new_statements, new)
         elseif s.type == '!DATA' then
             for i, t in ipairs(s) do
-                if t.tt == 'LABEL' then
+                if t.tt == 'LABELSYM' then
                     local label = self.labels[t.tok]
                     if label == nil then
                         self:error('undefined label', t.tok)
                     end
                     t.tt = 'WORDS'
                     t.tok = {label}
+                elseif t.tt == 'NUM' then
+                    t.tt = t.size..'S'
+                    t.tok = {t.tok}
+                    t.size = nil
                 end
             end
             self.pos = self.pos + (s.length or util.measure_data(s))

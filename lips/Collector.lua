@@ -35,6 +35,10 @@ function Collector:push_data(datum, size)
 
     -- TODO: consider not scrunching data statements, just their tokens
 
+    if type(datum) == 'number' then
+        datum = self:token(datum)
+    end
+
     local last_statement = self.statements[#self.statements]
     local s
     if last_statement and last_statement.type == '!DATA' then
@@ -44,14 +48,23 @@ function Collector:push_data(datum, size)
         insert(self.statements, s)
     end
 
-    if type(datum) == 'string' and size == 'WORD' then
-        -- labels will be assembled to words
-        insert(s, Token('LABEL', datum))
-        return
-    end
-
     if size ~= 'BYTE' and size ~= 'HALFWORD' and size ~= 'WORD' then
         error('Internal Error: unknown data size argument')
+    end
+
+    if datum.tt == 'LABELSYM' then
+        if size == 'WORD' then
+            -- labels will be assembled to words
+            insert(s, datum)
+            return
+        else
+            self:error('labels are too large to be used in this directive')
+        end
+    elseif datum.tt == 'VARSYM' then
+        insert(s, datum:set('size', size))
+        return
+    elseif datum.tt ~= 'NUM' then
+        self:error('unsupported data type', datum.tt)
     end
 
     local sizes = size..'S'
@@ -65,7 +78,7 @@ function Collector:push_data(datum, size)
         insert(s, t)
         s:validate()
     end
-    insert(t.tok, datum)
+    insert(t.tok, datum.tok)
 end
 
 function Collector:variable()
@@ -104,10 +117,10 @@ function Collector:directive()
             end
         end
     elseif name == 'BYTE' or name == 'HALFWORD' or name == 'WORD' then
-        self:push_data(self:const().tok, name)
+        self:push_data(self:const(), name)
         while not self:is_EOL() do
             self:optional_comma()
-            self:push_data(self:const().tok, name)
+            self:push_data(self:const(), name)
         end
     elseif name == 'HEX' then
         if self.tt ~= 'OPEN' then
@@ -119,7 +132,7 @@ function Collector:directive()
             if self.tt == 'EOL' then
                 self:advance()
             else
-                self:push_data(self:const().tok, 'BYTE')
+                self:push_data(self:const(), 'BYTE')
             end
         end
         self:advance()
