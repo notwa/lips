@@ -68,7 +68,7 @@ function Reader:const(relative, no_label)
         self:expect{'NUM', 'LABELREL'}
     end
     local new = Token(t)
-    if relative then
+    if relative then -- you probably shouldn't use this in Preproc
         if t.tt == 'LABELSYM' then
             new.tt = 'LABELREL'
         elseif t.tt == 'NUM' then

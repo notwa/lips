@@ -201,7 +201,7 @@ function overrides:BEQI(name)
     local branch = branch_basics[name]
     local reg = self:pop('CPU')
     local im = self:pop('CONST')
-    local offset = self:pop('REL'):set('signed')
+    local offset = self:pop('CONST')
 
     if reg == 'AT' then
         self:error('register cannot be AT in this pseudo-instruction')
@@ -219,7 +219,7 @@ function overrides:BLTI(name)
     local branch = branch_basics[name]
     local reg = self:pop('CPU')
     local im = self:pop('CONST')
-    local offset = self:pop('REL'):set('signed')
+    local offset = self:pop('CONST')
 
     if reg == 'AT' then
         self:error('register cannot be AT in this pseudo-instruction')
@@ -241,7 +241,7 @@ function overrides:BLEI(name)
     local branch = branch_basics[name]
     local reg = self:pop('CPU')
     local im = self:pop('CONST')
-    local offset = self:pop('REL'):set('signed')
+    local offset = self:pop('CONST')
 
     if reg == 'AT' then
         self:error('register cannot be AT in this pseudo-instruction')
@@ -253,7 +253,8 @@ function overrides:BLEI(name)
     if name == 'BLEI' or name =='BLEIL' then
         beq_offset = offset
     else
-        beq_offset = 2 -- branch to delay slot of the next branch
+        -- branch to delay slot of the next branch
+        beq_offset = self:token('NUM', 2):set('fixed')
     end
     self:push_new('BEQ', reg, 'AT', beq_offset)
 

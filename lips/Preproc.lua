@@ -198,11 +198,9 @@ function Preproc:pop(kind)
         ret = self:deref()
     elseif kind == 'CONST' then
         ret = self:const()
-    elseif kind == 'REL' then
-        ret = self:const('REL')
     elseif kind == 'END' then
-        if self.s[self.i + 1] ~= nil then
-            self:error('too many arguments')
+        if self.s[self.i] ~= nil then
+            self:error('expected EOL; too many arguments')
         end
         return -- don't increment self.i past end of arguments
     else

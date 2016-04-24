@@ -36,6 +36,8 @@ function Dumper:export_labels(t)
 end
 
 function Dumper:label_delta(from, to)
+    from = from % 0x80000000
+    to = to % 0x80000000
     local rel = floor(to/4) - 1 - floor(from/4)
     if rel > 0x8000 or rel <= -0x8000 then
         self:error('branch too far', rel)
@@ -44,12 +46,10 @@ function Dumper:label_delta(from, to)
 end
 
 function Dumper:desym(t)
-    if t.tt == 'REL' then
-        return t.tok
+    -- note: don't run t:compute() here; let valvar handle that
+    if t.tt == 'REL' and not t.fixed then
+        return self:label_delta(self:pc(), t.tok)
     elseif type(t.tok) == 'number' then
-        if t.offset then
-            return t.tok + t.offset
-        end
         return t.tok
     elseif t.tt == 'REG' then
         assert(data.all_registers[t.tok], 'Internal Error: unknown register')
@@ -58,9 +58,6 @@ function Dumper:desym(t)
         local label = self.labels[t.tok]
         if label == nil then
             self:error('undefined label', t.tok)
-        end
-        if t.offset then
-            label = label + t.offset
         end
         if t.tt == 'LABELSYM' then
             return label
@@ -138,6 +135,7 @@ function Dumper:format_in(informat)
     -- see data.lua for a guide on what all these mean
     local args = {}
     --if #informat ~= #s then error('mismatch') end
+    self.i = 0
     for i=1, #informat do
         self.i = i
         local c = informat:sub(i, i)
@@ -168,7 +166,7 @@ function Dumper:format_in(informat)
         elseif c == 'I' and not args.index then
             args.index = self:const():set('index')
         elseif c == 'k' and not args.immediate then
-            args.immediate = self:const(nil, 'no label'):set('negate')
+            args.immediate = self:const(nil, 'no label'):set('signed'):set('negate')
         elseif c == 'K' and not args.immediate then
             args.immediate = self:const(nil, 'no label'):set('signed')
         elseif c == 'b' and not args.base then
@@ -220,6 +218,9 @@ function Dumper:assemble(s)
     self.s = s
     if h[2] ~= nil then
         local args = self:format_in(h[2])
+        if self.i ~= #s then
+            self:error('expected EOL; too many arguments')
+        end
         return self:format_out(h, args)
     else
         self:error('unimplemented instruction', name)
