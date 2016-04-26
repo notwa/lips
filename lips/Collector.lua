@@ -232,8 +232,8 @@ function Collector:collect(tokens, fn)
     self.statements = {}
 
     -- this works, but probably shouldn't be in this function specifically
-    if self.options.offset then
-        local s = Statement('(options)', 0, '!ORG', self.options.offset)
+    if self.options.origin then
+        local s = Statement('(options)', 0, '!ORG', self.options.origin)
         insert(self.statements, s)
     end
     if self.options.base then
