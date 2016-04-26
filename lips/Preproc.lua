@@ -211,7 +211,7 @@ function Preproc:pop(kind)
 end
 
 function Preproc:expand(statements)
-    -- third pass: expand pseudo-instructions
+    -- third pass: expand pseudo-instructions and register arguments
     self.statements = {}
     for i=1, #statements do
         local s = statements[i]
@@ -225,6 +225,23 @@ function Preproc:expand(statements)
             local h = data.instructions[name]
             if h == nil then
                 error('Internal Error: unknown instruction')
+            end
+
+            if data.one_register_variants[name] then
+                self.i = 1
+                local a = self:register(data.all_registers)
+                local b = s[2]
+                if b == nil or b.tt ~= 'REG' then
+                    insert(s, 2, self:token(a))
+                end
+            elseif data.two_register_variants[name] then
+                self.i = 1
+                local a = self:register(data.all_registers)
+                local b = self:register(data.all_registers)
+                local c = s[3]
+                if c == nil or c.tt ~= 'REG' then
+                    insert(s, 2, self:token(a))
+                end
             end
 
             if overrides[name] then

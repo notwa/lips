@@ -177,6 +177,22 @@ function overrides:ROL(name)
 end
 overrides.ROR = overrides.ROL
 
+function overrides:ABS(name)
+    local dest = self:pop('CPU')
+    local src = self:pop('CPU')
+    self:push_new('SRA', 'AT', src, 31)
+    self:push_new('XOR', dest, src, 'AT')
+    self:push_new('SUBU', dest, dest, 'AT')
+end
+
+function overrides:CL(name)
+    self:expect{'REG'} -- assert there's at least one argument
+    for i=1, #self.s do
+        local reg = self:pop('CPU')
+        self:push_new('CL', reg)
+    end
+end
+
 function overrides:JR(name)
     local src = self:peek() and self:pop('CPU') or 'RA'
     self:push_new('JR', src)
