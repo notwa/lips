@@ -388,6 +388,10 @@ data.instructions = {
     BNEZL   = {21, 'sr', 's0o'},        -- BNEL RS, R0, offset
     CL      = { 0, 'd', '00d0C', 37},   -- OR RD, R0, R0
     MOV     = { 0, 'ds', 's0d0C', 37},  -- OR RD, RS, R0
+    DMOV    = { 0, 'ds', 's0d0C', 45},  -- DADDU RD, RS, R0
+-- bass does it this way
+--  MOV     = { 0, 'dt', '0td0C', 33},  -- ADDU RD, R0, RT
+--  DMOV    = { 0, 'dt', '0td0C', 45},  -- DADDU RD, R0, RT
     NEG     = { 0, 'dt', '0td0C', 34},  -- SUB RD, R0, RT
     NEGU    = { 0, 'dt', '0td0C', 35},  -- SUBU RD, R0, RT
     NOP     = { 0, '', '0'},            -- SLL R0, R0, 0
@@ -396,6 +400,11 @@ data.instructions = {
     SGTU    = { 0, 'dst', 'tsd0C', 43}, -- SLTU RD, RT, RS
     SUBI    = { 8, 'tsk', 'sti'},       -- ADDI RT, RS, -immediate
     SUBIU   = { 9, 'tsk', 'sti'},       -- ADDIU RT, RS, -immediate
+
+    L_D     = {53, 'Tob', 'bTo'}, -- LDC1
+    L_S     = {49, 'Tob', 'bTo'}, -- LWC1
+    S_D     = {61, 'Tob', 'bTo'}, -- SDC1
+    S_S     = {57, 'Tob', 'bTo'}, -- SWC1
 
     -- ...that expand to multiple instructions
     LI      = __, -- only one instruction for values < 0x10000
