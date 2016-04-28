@@ -12,12 +12,7 @@ Even this README is incomplete.
 
 ## Usage
 
-Install the lips directory to somewhere Lua's `package.path` can find it.
-If you're using it locally, you'll either need to write something like:
-```
-package.path = package.path..";?/init.lua"
-```
-or `require "lips.init"` directly.
+`local lips = require "lips.init"`
 
 You can then use it as such:
 [example.lua][elua] — [example.asm][easm]
