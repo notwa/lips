@@ -205,6 +205,15 @@ function overrides:JR(name)
 end
 
 local branch_basics = {
+    BGE = 'BEQ',
+    BLE = 'BEQ',
+    BLT = 'BNE',
+    BGT = 'BNE',
+    BGEL = 'BEQL',
+    BLEL = 'BEQL',
+    BLTL = 'BNEL',
+    BGTL = 'BNEL',
+
     BEQI = 'BEQ',
     BGEI = 'BEQ',
     BGTI = 'BEQ',
@@ -221,108 +230,40 @@ local branch_basics = {
 
 function overrides:BLT(name)
     local slt = name:sub(#name) == 'U' and 'SLTU' or 'SLT'
+    local branch = branch_basics[name:sub(1, 3)]
     local a = self:pop('CPU')
     local b = self:pop('CPU')
     local offset = self:pop('CONST')
     self:push_new(slt, 'AT', a, b)
-    self:push_new('BNEZ', 'AT', offset)
-end
-function overrides:BGE(name)
-    local slt = name:sub(#name) == 'U' and 'SLTU' or 'SLT'
-    local a = self:pop('CPU')
-    local b = self:pop('CPU')
-    local offset = self:pop('CONST')
-    self:push_new(slt, 'AT', a, b)
-    self:push_new('BEQZ', 'AT', offset)
-end
-function overrides:BLE(name)
-    local slt = name:sub(#name) == 'U' and 'SLTU' or 'SLT'
-    local a = self:pop('CPU')
-    local b = self:pop('CPU')
-    local offset = self:pop('CONST')
-    self:push_new(slt, 'AT', b, a)
-    self:push_new('BEQZ', 'AT', offset)
-end
-function overrides:BGT(name)
-    local slt = name:sub(#name) == 'U' and 'SLTU' or 'SLT'
-    local a = self:pop('CPU')
-    local b = self:pop('CPU')
-    local offset = self:pop('CONST')
-    self:push_new(slt, 'AT', b, a)
-    self:push_new('BNEZ', 'AT', offset)
-end
-overrides.BLTU = overrides.BLT
-overrides.BGEU = overrides.BGE
-overrides.BLEU = overrides.BLE
-overrides.BGTU = overrides.BGT
-
-function overrides:BEQI(name)
-    local branch = branch_basics[name]
-    local reg = self:pop('CPU')
-    local im = self:pop('CONST')
-    local offset = self:pop('CONST')
-
-    if reg == 'AT' then
-        self:error('register cannot be AT in this pseudo-instruction')
-    end
-
-    self:push_new('ADDIU', 'AT', 'R0', im)
-
-    self:push_new(branch, reg, 'AT', offset)
-end
-overrides.BNEI = overrides.BEQI
-overrides.BEQIL = overrides.BEQI
-overrides.BNEIL = overrides.BEQI
-
-function overrides:BLTI(name)
-    local branch = branch_basics[name]
-    local reg = self:pop('CPU')
-    local im = self:pop('CONST')
-    local offset = self:pop('CONST')
-
-    if reg == 'AT' then
-        self:error('register cannot be AT in this pseudo-instruction')
-    end
-
-    self:push_new('SLTI', 'AT', reg, im)
-
-    self:push_new(branch, 'R0', 'AT', offset)
-end
-overrides.BGEI = overrides.BLTI
-overrides.BLTIL = overrides.BLTI
-overrides.BGEIL = overrides.BLTI
-
-function overrides:BLEI(name)
-    -- TODO: this can probably be optimized
-    if name:sub(#name) == 'L' then
-        self:error('unimplemented pseudo-instruction', name)
-    end
-    local branch = branch_basics[name]
-    local reg = self:pop('CPU')
-    local im = self:pop('CONST')
-    local offset = self:pop('CONST')
-
-    if reg == 'AT' then
-        self:error('register cannot be AT in this pseudo-instruction')
-    end
-
-    self:push_new('ADDIU', 'AT', 'R0', im)
-
-    local beq_offset
-    if name == 'BLEI' or name =='BLEIL' then
-        beq_offset = offset
-    else
-        -- branch to delay slot of the next branch
-        beq_offset = self:token('NUM', 2):set('fixed')
-    end
-    self:push_new('BEQ', reg, 'AT', beq_offset)
-
-    self:push_new('SLT', 'AT', reg, 'AT')
-
     self:push_new(branch, 'AT', 'R0', offset)
 end
-overrides.BGTI = overrides.BLEI
-overrides.BLEIL = overrides.BLEI
-overrides.BGTIL = overrides.BLEI
+
+function overrides:BLE(name)
+    local slt = name:sub(#name) == 'U' and 'SLTU' or 'SLT'
+    local branch = branch_basics[name:sub(1, 3)]
+    local a = self:pop('CPU')
+    local b = self:pop('CPU')
+    local offset = self:pop('CONST')
+    self:push_new(slt, 'AT', b, a)
+    self:push_new(branch, 'AT', 'R0', offset)
+end
+
+overrides.BGE = overrides.BLT
+overrides.BGT = overrides.BLE
+
+overrides.BGEL = overrides.BLT
+overrides.BGTL = overrides.BLE
+overrides.BLEL = overrides.BLE
+overrides.BLTL = overrides.BLT
+
+overrides.BGEU = overrides.BLT
+overrides.BGTU = overrides.BLE
+overrides.BLEU = overrides.BLE
+overrides.BLTU = overrides.BLT
+
+overrides.BGEUL = overrides.BLT
+overrides.BGTUL = overrides.BLE
+overrides.BLEUL = overrides.BLE
+overrides.BLTUL = overrides.BLT
 
 return overrides
