@@ -146,6 +146,9 @@ function Preproc:process(statements)
                 end
                 insert(new_statements, s)
             else
+                for j, t in ipairs(s) do
+                    self:lookup(t)
+                end
                 insert(new_statements, s)
             end
         else
