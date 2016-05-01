@@ -13,6 +13,12 @@ local function tob_override(self, name)
     if self:peek('DEREF') then
         offset = 0
         base = self:pop('DEREF')
+    elseif self:peek('REG') then
+        local o = self:pop('CPU')
+        local b = self:pop('DEREF'):set('tt', 'REG')
+        self:push_new('ADDU', 'AT', o, b)
+        offset = 0
+        base = self:token('DEREF', 'AT')
     else -- NUM or LABELSYM
         local o = self:pop('CONST')
         if self:peek('NUM') then
@@ -212,6 +218,43 @@ local branch_basics = {
     BLTIL = 'BNEL',
     BNEIL = 'BNEL',
 }
+
+function overrides:BLT(name)
+    local slt = name:sub(#name) == 'U' and 'SLTU' or 'SLT'
+    local a = self:pop('CPU')
+    local b = self:pop('CPU')
+    local offset = self:pop('CONST')
+    self:push_new(slt, 'AT', a, b)
+    self:push_new('BNEZ', 'AT', offset)
+end
+function overrides:BGE(name)
+    local slt = name:sub(#name) == 'U' and 'SLTU' or 'SLT'
+    local a = self:pop('CPU')
+    local b = self:pop('CPU')
+    local offset = self:pop('CONST')
+    self:push_new(slt, 'AT', a, b)
+    self:push_new('BEQZ', 'AT', offset)
+end
+function overrides:BLE(name)
+    local slt = name:sub(#name) == 'U' and 'SLTU' or 'SLT'
+    local a = self:pop('CPU')
+    local b = self:pop('CPU')
+    local offset = self:pop('CONST')
+    self:push_new(slt, 'AT', b, a)
+    self:push_new('BEQZ', 'AT', offset)
+end
+function overrides:BGT(name)
+    local slt = name:sub(#name) == 'U' and 'SLTU' or 'SLT'
+    local a = self:pop('CPU')
+    local b = self:pop('CPU')
+    local offset = self:pop('CONST')
+    self:push_new(slt, 'AT', b, a)
+    self:push_new('BNEZ', 'AT', offset)
+end
+overrides.BLTU = overrides.BLT
+overrides.BGEU = overrides.BGE
+overrides.BLEU = overrides.BLE
+overrides.BGTU = overrides.BGT
 
 function overrides:BEQI(name)
     local branch = branch_basics[name]
