@@ -165,7 +165,7 @@ Whether or not they output the proper machine code is another thing.
 
 * MUL, DIV, REM
 
-* many Set/Branch pseudo-instructions
+* many Set [Condition] pseudo-instructions
 
 ## Registers
 

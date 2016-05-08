@@ -443,12 +443,13 @@ data.instructions = {
     BLT     = o1, BLTU    = o1,
     BGT     = o1, BGTU    = o1,
 
-    BEQI    = __, BEQIL   = __,
-    BGEI    = __, BGEIL   = __,
-    BGTI    = __, BGTIL   = __,
-    BLEI    = __, BLEIL   = __,
-    BLTI    = __, BLTIL   = __,
-    BNEI    = __, BNEIL   = __,
+    -- note: signedness of BEQI/BNEI determines how the immediate is loaded
+    BEQI    = __, BEQIU   = __, BEQIL   = __, BEQIUL  = __,
+    BGEI    = __, BGEIU   = __, BGEIL   = __, BGEIUL  = __,
+    BGTI    = __, BGTIU   = __, BGTIL   = __, BGTIUL  = __,
+    BLEI    = __, BLEIU   = __, BLEIL   = __, BLEIUL  = __,
+    BLTI    = __, BLTIU   = __, BLTIL   = __, BLTIUL  = __,
+    BNEI    = __, BNEIU   = __, BNEIL   = __, BNEIUL  = __,
 
     BGEL    = o1, BGEUL   = o1,
     BGTL    = o1, BGTUL   = o1,

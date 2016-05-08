@@ -3,6 +3,14 @@ local insert = table.insert
 local path = string.gsub(..., "[^.]+$", "")
 local data = require(path.."data")
 
+local function name_pop(name, character)
+    if name:sub(#name) == character then
+        return name:sub(1, #name - 1), character
+    else
+        return name, ''
+    end
+end
+
 local overrides = {}
 -- note: "self" is an instance of Preproc
 
@@ -163,6 +171,8 @@ function overrides:NORI(name)
     self:push_new('NOR', dest, dest, 'R0') -- NOT
 end
 
+-- TODO: ROLV/RORV-like versions of this
+--       maybe give the same auto-register treatment to SLL/SRL/SRA too
 function overrides:ROL(name)
     local first = name == 'ROL' and 'SLL' or 'SRL'
     local second = name == 'ROL' and 'SRL' or 'SLL'
@@ -205,65 +215,107 @@ function overrides:JR(name)
 end
 
 local branch_basics = {
+    BEQ = 'BEQ',
     BGE = 'BEQ',
+    BGT = 'BNE',
     BLE = 'BEQ',
     BLT = 'BNE',
-    BGT = 'BNE',
-    BGEL = 'BEQL',
-    BLEL = 'BEQL',
-    BLTL = 'BNEL',
-    BGTL = 'BNEL',
-
-    BEQI = 'BEQ',
-    BGEI = 'BEQ',
-    BGTI = 'BEQ',
-    BLEI = 'BNE',
-    BLTI = 'BNE',
-    BNEI = 'BNE',
-    BEQIL = 'BEQL',
-    BGEIL = 'BEQL',
-    BGTIL = 'BEQL',
-    BLEIL = 'BNEL',
-    BLTIL = 'BNEL',
-    BNEIL = 'BNEL',
+    BNE = 'BNE',
 }
 
 function overrides:BLT(name)
-    local slt = name:sub(#name) == 'U' and 'SLTU' or 'SLT'
-    local branch = branch_basics[name:sub(1, 3)]
+    local likely, unsigned
+    name, likely = name_pop(name, 'L')
+    name, unsigned = name_pop(name, 'U')
+    local branch = branch_basics[name]
     local a = self:pop('CPU')
     local b = self:pop('CPU')
     local offset = self:pop('CONST')
-    self:push_new(slt, 'AT', a, b)
-    self:push_new(branch, 'AT', 'R0', offset)
+    self:push_new('SLT'..unsigned, 'AT', a, b)
+    self:push_new(branch..likely, 'AT', 'R0', offset)
 end
 
 function overrides:BLE(name)
-    local slt = name:sub(#name) == 'U' and 'SLTU' or 'SLT'
-    local branch = branch_basics[name:sub(1, 3)]
+    local likely, unsigned
+    name, likely = name_pop(name, 'L')
+    name, unsigned = name_pop(name, 'U')
+    local branch = branch_basics[name]
     local a = self:pop('CPU')
     local b = self:pop('CPU')
     local offset = self:pop('CONST')
-    self:push_new(slt, 'AT', b, a)
-    self:push_new(branch, 'AT', 'R0', offset)
+    self:push_new('SLT'..unsigned, 'AT', b, a)
+    self:push_new(branch..likely, 'AT', 'R0', offset)
 end
 
-overrides.BGE = overrides.BLT
-overrides.BGT = overrides.BLE
+function overrides:BLTI(name)
+    local likely, unsigned
+    name, likely = name_pop(name, 'L')
+    name, unsigned = name_pop(name, 'U')
+    local branch = branch_basics[name:sub(1, #name - 1)]
+    local reg = self:pop('CPU')
+    local im = self:pop('CONST')
+    local offset = self:pop('CONST')
+    self:push_new('SLTI'..unsigned, 'AT', reg, im)
+    self:push_new(branch..likely, 'AT', 'R0', offset)
+end
 
-overrides.BGEL = overrides.BLT
-overrides.BGTL = overrides.BLE
-overrides.BLEL = overrides.BLE
-overrides.BLTL = overrides.BLT
+function overrides:BLEI(name)
+    local likely, unsigned
+    name, likely = name_pop(name, 'L')
+    name, unsigned = name_pop(name, 'U')
+    local branch = branch_basics[name:sub(1, #name - 1)]
+    local loadi = unsigned == 'U' and 'ORI' or 'ADDIU'
+    local reg = self:pop('CPU')
+    local im = self:pop('CONST')
+    local offset = self:pop('CONST')
+    self:push_new(loadi, 'AT', 'R0', im)
+    self:push_new('SLT'..unsigned, 'AT', 'AT', reg)
+    self:push_new(branch..likely, 'AT', 'R0', offset)
+end
 
-overrides.BGEU = overrides.BLT
-overrides.BGTU = overrides.BLE
-overrides.BLEU = overrides.BLE
-overrides.BLTU = overrides.BLT
+function overrides:BEQI(name)
+    local likely, unsigned
+    name, likely = name_pop(name, 'L')
+    name, unsigned = name_pop(name, 'U')
+    local branch = name:sub(1, #name - 1)
+    local loadi = unsigned == 'U' and 'ORI' or 'ADDIU'
+    local reg = self:pop('CPU')
+    local im = self:pop('CONST')
+    local offset = self:pop('CONST')
+    self:push_new(loadi, 'AT', 'R0', im)
+    self:push_new(branch..likely, reg, 'AT', offset)
+end
 
-overrides.BGEUL = overrides.BLT
-overrides.BGTUL = overrides.BLE
-overrides.BLEUL = overrides.BLE
-overrides.BLTUL = overrides.BLT
+local BLT = overrides.BLT
+local BLE = overrides.BLE
+local BLTI = overrides.BLTI
+local BLEI = overrides.BLEI
+local BEQI = overrides.BEQI
+for k, v in pairs{
+    BGE = BLT,   BGEI = BLTI,
+    BGT = BLE,   BGTI = BLEI,
+
+    BGEL = BLT,  BGEIL = BLTI,
+    BGTL = BLE,  BGTIL = BLEI,
+    BLEL = BLE,  BLEIL = BLEI,
+    BLTL = BLT,  BLTIL = BLTI,
+
+    BGEU = BLT,  BGEIU = BLTI,
+    BGTU = BLE,  BGTIU = BLEI,
+    BLEU = BLE,  BLEIU = BLEI,
+    BLTU = BLT,  BLTIU = BLTI,
+
+    BGEUL = BLT, BGEIUL = BLTI,
+    BGTUL = BLE, BGTIUL = BLEI,
+    BLEUL = BLE, BLEIUL = BLEI,
+    BLTUL = BLT, BLTIUL = BLTI,
+
+    BEQI    = BEQI, BEQIU   = BEQI,
+    BEQIL   = BEQI, BEQIUL  = BEQI,
+    BNEI    = BEQI, BNEIU   = BEQI,
+    BNEIL   = BEQI, BNEIUL  = BEQI,
+} do
+    overrides[k] = v
+end
 
 return overrides
