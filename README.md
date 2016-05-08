@@ -171,7 +171,7 @@ Whether or not they output the proper machine code is another thing.
 
 In order of numerical value, with intended usage:
 
-* R0: always zero; cannot be changed. 'zero' is an acceptable alias.
+* ZERO: always zero; cannot be changed.
 
 * AT: assembler temporary. used by various pseudo-instructions.
   user may use freely if they're wary.
@@ -196,8 +196,9 @@ In order of numerical value, with intended usage:
 
 * RA: subroutine return address.
 
-* REG#: whereas # is a decimal number from 0 to 31.
-aliased to the appropriate register. eg: REG0 is R0, REG1 is at, REG2 is V0.
+* R#: whereas # is a decimal number from 0 to 31.
+aliased to the appropriate register, for instance:
+R0 is ZERO, R1 is at, R2 is V0, etc.
 
 * F#: coprocessor 1 registers, whereas # is a decimal number from 0 to 31.
 

@@ -2,10 +2,10 @@ local data = {}
 
 data.registers = {
     [0]=
-    'R0', 'AT', 'V0', 'V1', 'A0', 'A1', 'A2', 'A3',
-    'T0', 'T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7',
-    'S0', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7',
-    'T8', 'T9', 'K0', 'K1', 'GP', 'SP', 'FP', 'RA',
+    'ZERO', 'AT', 'V0', 'V1', 'A0', 'A1', 'A2', 'A3',
+    'T0',   'T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7',
+    'S0',   'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7',
+    'T8',   'T9', 'K0', 'K1', 'GP', 'SP', 'FP', 'RA',
 }
 
 data.sys_registers = {
@@ -70,13 +70,11 @@ revtable(data.all_registers)
 revtable(data.all_directives)
 
 -- alternate register names
-data.registers['ZERO'] = 0
-data.all_registers['ZERO'] = 0
 data.registers['S8'] = 30
 data.all_registers['S8'] = 30
 
 for i=0, 31 do
-    local r = 'REG'..tostring(i)
+    local r = 'R'..tostring(i)
     data.registers[r] = i
     data.all_registers[r] = i
 end
