@@ -248,7 +248,7 @@ this allows you to have a PC value different from origin:
 `PC = origin + base`
 
 * `.push {vars...}`  
-`.pop {vars...}'  
+`.pop {vars...}`  
 pushes or pops variables with an internal stack.
 supported variables: org, base, pc.
 
