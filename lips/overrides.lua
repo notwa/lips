@@ -12,6 +12,40 @@ local function name_pop(name, character)
     end
 end
 
+local function li(self, buffer, dest, im)
+    if im.tt == 'LABELSYM' then
+        local im = self:token(im):set('portion', 'upperoff')
+        insert(buffer, {'LUI', dest, im})
+        im = self:token(im):set('portion', 'lower')
+        insert(buffer, {'ADDIU', dest, dest, im})
+        return
+    end
+
+    if im.portion then
+        -- FIXME: use appropriate instruction based on portion?
+        insert(buffer, {'ADDIU', dest, 'R0', im})
+        return
+    end
+
+    im.tok = im.tok % 0x100000000
+    if im.tok >= 0x10000 and im.tok <= 0xFFFF8000 then
+        local temp = self:token(im):set('portion', 'upper')
+        insert(buffer, {'LUI', dest, temp})
+        if im.tok % 0x10000 ~= 0 then
+            local temp = self:token(im):set('portion', 'lower')
+            insert(buffer, {'ORI', dest, dest, temp})
+        end
+    elseif im.tok >= 0x8000 and im.tok < 0x10000 then
+        local temp = self:token(im):set('portion', 'lower')
+        insert(buffer, {'ORI', dest, 'R0', temp})
+    else
+        local temp = self:token(im):set('portion', 'lower')
+        insert(buffer, {'ADDIU', dest, 'R0', temp})
+    end
+
+    return buffer
+end
+
 local overrides = {}
 -- note: "self" is an instance of Preproc
 
@@ -75,26 +109,9 @@ function overrides:LI(name)
         self:error('use LA for labels')
     end
 
-    if im.portion then
-        -- FIXME: use appropriate instruction based on portion?
-        self:push_new('ADDIU', dest, 'R0', im)
-        return
-    end
-
-    im.tok = im.tok % 0x100000000
-    if im.tok >= 0x10000 and im.tok <= 0xFFFF8000 then
-        local temp = self:token(im):set('portion', 'upper')
-        self:push_new('LUI', dest, temp)
-        if im.tok % 0x10000 ~= 0 then
-            local temp = self:token(im):set('portion', 'lower')
-            self:push_new('ORI', dest, dest, temp)
-        end
-    elseif im.tok >= 0x8000 and im.tok < 0x10000 then
-        local temp = self:token(im):set('portion', 'lower')
-        self:push_new('ORI', dest, 'R0', temp)
-    else
-        local temp = self:token(im):set('portion', 'lower')
-        self:push_new('ADDIU', dest, 'R0', temp)
+    local buffer = li(self, {}, dest, im)
+    for i, v in ipairs(buffer) do
+        self:push_new(unpack(v))
     end
 end
 
@@ -102,9 +119,9 @@ function overrides:LA(name)
     local dest = self:pop('CPU')
     local im = self:pop('CONST')
 
-    local im = self:token(im):set('portion', 'upperoff')
+    im = self:token(im):set('portion', 'upperoff')
     self:push_new('LUI', dest, im)
-    local im = self:token(im):set('portion', 'lower')
+    im = self:token(im):set('portion', 'lower')
     self:push_new('ADDIU', dest, dest, im)
 end
 
@@ -154,15 +171,11 @@ function overrides:CALL(name)
     local stack = {}
     for i, t in ipairs(self.s) do
         if i == 1 then
-            if t.tt == 'LABELSYM' then
-                func = self:pop()
-            else
-                self:error("expected a function to call", t.tok)
-            end
-        elseif t.tt == 'NUM' then
-            insert(stack, self:pop())
-        else
+            func = self:pop()
+        elseif t.tt == 'REG' then
             insert(stack, self:pop('CPU'))
+        else
+            insert(stack, self:pop())
         end
     end
     if func == nil then
@@ -170,37 +183,45 @@ function overrides:CALL(name)
     end
 
     local buffer = {}
-    -- one for each An register
+    -- keep track of An registers used so that
+    -- we don't use an overwritten value by mistake.
+    -- in theory, we could set up something to swap
+    -- An registers around with the minimum use of AT,
+    -- but that's more complexity than we need for an edge case.
     local used = {false, false, false, false}
     local need = {false, false, false, false}
 
     local deref_sp = self:token('DEREF', 'SP')
     for i, t in ipairs(stack) do
-        if t.tt == 'NUM' then
-            error('TODO')
-        elseif t.tt == 'REG' then
+        if t.tt == 'REG' then
             if     i == 1 and t.tok == 'A0' then -- A0 is already A0, noop.
             elseif i == 2 and t.tok == 'A1' then -- etc.
             elseif i == 3 and t.tok == 'A2' then
             elseif i == 4 and t.tok == 'A3' then
             elseif i <= 4 then
-                -- keep track of An registers used so that
-                -- we don't use an overwritten value by mistake.
-                -- in theory, we could set up something to swap
-                -- An registers around with the minimum use of AT,
-                -- but that's more complexity than we need for an edge case.
                 if t.tok:sub(1, 1) == 'A' then
                     local n = tonumber(t.tok:sub(2, 2))
                     if used[n + 1] then
                         self:error("cannot use overwritten register A"..tostring(n), t.tok)
                     end
                 end
-                local reg = 'A'..tostring(i - 1)
-                insert(buffer, {'MOV', reg, t})
+                local dest = 'A'..tostring(i - 1)
+                insert(buffer, {'MOV', dest, t})
                 used[i] = true
             else
                 local offset = (i - 1) * 4
                 insert(buffer, {'SW', t, offset, deref_sp})
+            end
+        else
+            if i <= 4 then
+                local dest = 'A'..tostring(i - 1)
+                li(self, buffer, dest, t)
+                used[i] = true
+            else
+                local dest = 'AT'
+                li(self, buffer, dest, t)
+                local offset = (i - 1) * 4
+                insert(buffer, {'SW', dest, offset, deref_sp})
             end
         end
     end
@@ -208,7 +229,7 @@ function overrides:CALL(name)
     -- if there was just one argument (the function/label),
     -- then push a NOP to fill the delay slot.
     -- (if the user wants to be efficient, they should be using JAL directly)
-    if #stack == 0 then
+    if #buffer == 0 then
         insert(buffer, {'NOP'})
     end
 
@@ -217,8 +238,8 @@ function overrides:CALL(name)
     insert(buffer, #buffer, {'JAL', func})
 
     -- finally, write everything out
-    for i, t in ipairs(buffer) do
-        self:push_new(unpack(t))
+    for i, v in ipairs(buffer) do
+        self:push_new(unpack(v))
     end
 end
 
