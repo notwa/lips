@@ -5,8 +5,6 @@ maybe deprecate options.unsafe
 
 add delay slot warnings
 
-consider jarg/call pseudo-instruction (calling convention)
-
 add arithmetic (using %() syntax?)
 add macros
 implement push/pop/jpop as macros

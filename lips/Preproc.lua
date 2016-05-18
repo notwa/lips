@@ -194,7 +194,7 @@ end
 function Preproc:pop(kind)
     local ret
     if kind == nil then
-        -- noop
+        ret = self.s[self.i]
     elseif kind == 'CPU' then
         ret = self:register(data.registers)
     elseif kind == 'DEREF' then

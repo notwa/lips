@@ -411,7 +411,9 @@ data.instructions = {
     -- variable arguments
     PUSH    = __,
     POP     = __,
-    JPOP    = __,
+    JPOP    = __, -- deprecated alias of RET
+    CALL    = __,
+    RET     = __,
 --  CL      = __, overridden to take varargs
 
     ABS     = o1, -- SRA XOR SUBU

@@ -1,4 +1,5 @@
 local insert = table.insert
+local unpack = rawget(_G, 'unpack') or table.insert
 
 local path = string.gsub(..., "[^.]+$", "")
 local data = require(path.."data")
@@ -136,16 +137,90 @@ function overrides:PUSH(name)
             self:push_new(w, r, offset, self:token('DEREF', 'SP'))
         end
     end
-    if name == 'JPOP' then
+    if name == 'JPOP' or name == 'RET' then
         self:push_new('JR', 'RA')
     end
-    if name == 'POP' or name == 'JPOP' then
+    if name == 'POP' or name == 'JPOP' or name == 'RET' then
         local im = #stack * 4
         self:push_new('ADDIU', 'SP', 'SP', im)
     end
 end
 overrides.POP = overrides.PUSH
 overrides.JPOP = overrides.PUSH
+overrides.RET = overrides.PUSH
+
+function overrides:CALL(name)
+    local func = nil
+    local stack = {}
+    for i, t in ipairs(self.s) do
+        if i == 1 then
+            if t.tt == 'LABELSYM' then
+                func = self:pop()
+            else
+                self:error("expected a function to call", t.tok)
+            end
+        elseif t.tt == 'NUM' then
+            insert(stack, self:pop())
+        else
+            insert(stack, self:pop('CPU'))
+        end
+    end
+    if func == nil then
+        self:error(name..' requires at least one argument')
+    end
+
+    local buffer = {}
+    -- one for each An register
+    local used = {false, false, false, false}
+    local need = {false, false, false, false}
+
+    local deref_sp = self:token('DEREF', 'SP')
+    for i, t in ipairs(stack) do
+        if t.tt == 'NUM' then
+            error('TODO')
+        elseif t.tt == 'REG' then
+            if     i == 1 and t.tok == 'A0' then -- A0 is already A0, noop.
+            elseif i == 2 and t.tok == 'A1' then -- etc.
+            elseif i == 3 and t.tok == 'A2' then
+            elseif i == 4 and t.tok == 'A3' then
+            elseif i <= 4 then
+                -- keep track of An registers used so that
+                -- we don't use an overwritten value by mistake.
+                -- in theory, we could set up something to swap
+                -- An registers around with the minimum use of AT,
+                -- but that's more complexity than we need for an edge case.
+                if t.tok:sub(1, 1) == 'A' then
+                    local n = tonumber(t.tok:sub(2, 2))
+                    if used[n + 1] then
+                        self:error("cannot use overwritten register A"..tostring(n), t.tok)
+                    end
+                end
+                local reg = 'A'..tostring(i - 1)
+                insert(buffer, {'MOV', reg, t})
+                used[i] = true
+            else
+                local offset = (i - 1) * 4
+                insert(buffer, {'SW', t, offset, deref_sp})
+            end
+        end
+    end
+
+    -- if there was just one argument (the function/label),
+    -- then push a NOP to fill the delay slot.
+    -- (if the user wants to be efficient, they should be using JAL directly)
+    if #stack == 0 then
+        insert(buffer, {'NOP'})
+    end
+
+    -- insert jal as the second to last instruction
+    -- to place the last instruction in the jal's delay slot.
+    insert(buffer, #buffer, {'JAL', func})
+
+    -- finally, write everything out
+    for i, t in ipairs(buffer) do
+        self:push_new(unpack(t))
+    end
+end
 
 function overrides:NAND(name)
     local dest = self:pop('CPU')
