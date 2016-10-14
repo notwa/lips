@@ -5,7 +5,7 @@
 [max_n]: 47
 
 fib:
-    ; calculate the nth fibonacci number, caching results 1 to 47 to a table
+    ; calculate the nth fibonacci number, memoizing results 1 to 47 in a table.
     ; only valid for values of n between 0 and 47 inclusive.
     ; a0: n
     ; v0: Fn
@@ -35,9 +35,10 @@ fib:
 
     ; load the value from the look-up table.
     ; pseudo-instruction utilizing addressing modes:
-    lw      t9, fib_cache(t0)
+    lw      t9, fib_memo(t0)
 
-    ; branch to return the look-up value if it's non-zero, meaning it has been cached.
+    ; branch to return the look-up value if it's non-zero,
+    ; meaning it has been memoized.
     bnez    t9, +
 
     ; once again, note that this is the delay slot of the branch instruction.
@@ -72,9 +73,9 @@ fib:
     ; loop finished, copy the result to return.
     mov     v0, t1
 
-    ; cache the result for next time.
+    ; memoize the result for next time.
     ; pseudo-instruction not unlike the previous lw:
-    sw      v0, fib_cache(t0)
+    sw      v0, fib_memo(t0)
 
     ; here's the + label used at the start of the routine.
 +:
@@ -89,7 +90,7 @@ fib:
     nop
 
     ; set up initial values in the look-up table.
-fib_cache:
+fib_memo:
     ; lips doesn't yet have a way to specify "x, n times",
     ; so this will do for now.
     .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
