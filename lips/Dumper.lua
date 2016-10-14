@@ -2,7 +2,6 @@ local floor = math.floor
 local format = string.format
 local insert = table.insert
 local remove = table.remove
-local unpack = unpack or table.unpack
 
 local path = string.gsub(..., "[^.]+$", "")
 local data = require(path.."data")
