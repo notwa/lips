@@ -33,7 +33,7 @@ By default, lips will print the assembled word values in hex:
 etc...
 ```
 
-Other predefined output formats are available in [lips.writers];
+Other predefined output formats are available in [lips.writers][writers];
 you can instantiate one and pass it through the second argument of lips.
 
 Since lips is designed to assist with ROM/RAM hacking,
@@ -43,7 +43,7 @@ an existing executable or memory dump.
 For instance, consider [this injection routine][inject.lua]
 written for the Nintendo 64 Zelda games.
 
-[writers]: https://github.com/notwa/lips/blob/master/lips/writers.lua
+[writers]: /lips/writers.lua
 [inject.lua]: https://github.com/notwa/mm/blob/master/Lua/inject.lua
 
 ## Syntax
