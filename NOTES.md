@@ -72,7 +72,7 @@ currently there is:
 .debug_asm (default false)
     is arguably the least useful of states to dump in.
     this will dump statements after being reduced to
-    !ORG and !DATA statements. anything else is a bug.
+    !ORG and !DATA and !BIN statements. anything else is a bug.
     the values of the !BYTE statements are not printed.
 ```
 

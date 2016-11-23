@@ -320,13 +320,8 @@ function Lexer:lex_include_binary(_yield)
         fn = self.options.path..fn
     end
     local data = util.readfile(fn, true)
-
-    -- FIXME: this allocates a table for each byte.
-    --        this could easily cause performance issues on big files.
-    _yield('DIR', 'BYTE', fn, 0)
-    for b in string.gfind(data, '.') do
-        _yield('NUM', string.byte(b), fn, 0)
-    end
+    _yield('DIR', 'BIN', fn, 0)
+    _yield('STRING', data, fn, 0)
 end
 
 function Lexer:lex_expression(yield)

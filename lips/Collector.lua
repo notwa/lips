@@ -33,6 +33,7 @@ function Collector:push_data(datum, size)
     }
     --]]
 
+    -- FIXME: optimize the hell out of this garbage, preferably in the lexer
     -- TODO: consider not scrunching data statements, just their tokens
 
     if type(datum) == 'number' then
@@ -116,6 +117,9 @@ function Collector:directive()
                 add(name, size, self:const(nil, 'no label'))
             end
         end
+    elseif name == 'BIN' then
+        -- FIXME: not a real directive, just a workaround
+        add(name, self:string())
     elseif name == 'BYTE' or name == 'HALFWORD' or name == 'WORD' then
         self:push_data(self:const(), name)
         while not self:is_EOL() do
