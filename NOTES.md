@@ -16,8 +16,16 @@ in the call interface,
 a `writer` function and a table of `options` may be passed
 as further arguments after `fn_or_asm`.
 
+```
+TODO: example
+```
+
 `writer` could be one of the `lips.writers` provided,
 after instantiating with a call (it makes use of closure locals).
+
+```
+TODO: example
+```
 
 options is a table of string keys and any type of value.
 currently there is:
@@ -101,7 +109,7 @@ just to simplify the interface even further.
 maybe i could pull off `writer_or_options` for backwards compatibility?
 
 someday i'd like to add a `reader` option for handling of existing data,
-e.g. for implementing an automated .hook directive.
+e.g. for implementing an automated `.hook` directive.
 
 ## Parser
 
@@ -157,16 +165,17 @@ the rest of the code should be self-explanitory, albiet ugly.
 
 ### room for improvement
 
-this (character-based lexing) is actually a really bad way of writing a lexer.
-it doesn't clearly represent a syntax grammar, or possibly any grammar at all.
+this character-based lexer isn't driven by any particular grammar,
+making it unclear what syntax is and isn't valid.
 
-but it works. for now.
-it's the code i need to change the least to add new features,
-which has gotta count for something, right?
+but it works.
+it's the code i need to change the least to add new features.
 
 there's a couple TODOs and FIXMEs in here.
 
 ## Collector
+
+TODO
 
 ## Preproc
 
@@ -273,6 +282,10 @@ instead of reverse polish notation,
 so that i can handle short-circuiting `&&` and `||` operators,
 among other things, like evaluating stuff
 in logical order instead of right-to-left for everything.
+
+## Dumper
+
+TODO
 
 ## helper classes
 
