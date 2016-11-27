@@ -16,6 +16,14 @@ function TokenIter:init(tokens)
     self:reset()
 end
 
+TokenIter.arg_types = {
+    NUM = true,
+    REG = true,
+    VARSYM = true,
+    LABELSYM = true,
+    RELLABELSYM = true,
+}
+
 function TokenIter:error(msg, got)
     if got ~= nil then
         msg = msg..', got '..tostring(got)
@@ -176,7 +184,7 @@ function TokenIter:special()
     local args = {}
     while true do
         local arg = self:advance()
-        if not arg_types[arg.tt] then
+        if not self.arg_types[arg.tt] then
             self:error('invalid argument type', arg.tt)
         else
             self:advance()

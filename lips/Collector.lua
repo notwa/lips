@@ -11,14 +11,6 @@ function Collector:init(options)
     self.options = options or {}
 end
 
-Collector.arg_types = { -- for instructions
-    NUM = true,
-    REG = true,
-    VARSYM = true,
-    LABELSYM = true,
-    RELLABELSYM = true,
-}
-
 function Collector:statement(...)
     local I = self.iter
     local s = Statement(I.fn, I.line, ...)
@@ -186,7 +178,7 @@ function Collector:instruction(name)
             I:next()
         elseif I.tt == 'SEP' then
             I:error('extraneous comma')
-        elseif not self.arg_types[I.tt] then
+        elseif not I.arg_types[I.tt] then
             I:error('unexpected argument type in instruction', I.tt)
         else
             insert(s, t)
