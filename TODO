@@ -1,3 +1,10 @@
+unify/optimize ascii/asciiz/byte/halfword/word into BIN directives
+
+directive aliases, are these right?
+    DB = 'BYTE',
+    DH = 'HALFWORD',
+    DW = 'WORD',
+
 add basic command-line interface (patch.lua)
 
 add macros
