@@ -6,6 +6,7 @@ local Token = require(path.."Token")
 local Lexer = require(path.."Lexer")
 local Collector = require(path.."Collector")
 local Preproc = require(path.."Preproc")
+local Expander = require(path.."Expander")
 local Dumper = require(path.."Dumper")
 
 local Parser = Base:extend()
@@ -50,11 +51,10 @@ function Parser:parse(asm)
     self.statements = self:tokenize(asm)
     if self.options.debug_token then self:dump() end
 
-    local preproc = Preproc(self.options)
-    self.statements = preproc:process(self.statements)
+    self.statements = Preproc(self.options):process(self.statements)
     if self.options.debug_pre then self:dump() end
 
-    self.statements = preproc:expand(self.statements)
+    self.statements = Expander(self.options):expand(self.statements)
     if self.options.debug_post then self:dump() end
 
     local dumper = Dumper(self.writer, self.options)
