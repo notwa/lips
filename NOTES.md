@@ -182,15 +182,12 @@ TODO
 transforms complex statements into simpler statements
 that Dumper can later understand.
 
-the name is a bit of a misnomer, because there's
-very little processing after preprocessing. (see: `Dumper:load`)
-
 the `:check` method
 asserts that a token exists and is of a given type (`tt`).
 it will defer to the `:lookup` method if the token type mismatches,
 which isn't guaranteed to help.
 
-preprocessing is split into two stages: process and expand; and four passes:
+preprocessing is split into three passes:
 
 ### pass 1
 
@@ -235,31 +232,30 @@ that the appropriate relative labels are found in the proper order.
 
 attempts to parse and evaluate constant expressions.
 
-### pass 4
+### room for improvment
+
+pass 3 (expressions) should be an attempt to evaluate constants,
+and parsing should be moved to be part of pass 1.
+
+looking back, the `new_statements` ordeal
+only seems necessary for the (poor) error handling it provides.
+
+the handling of statement tables could be made better.
+
+## Expander
 
 expands pseudo-instructions, including the inferrence of implied registers.
 
 pseudo-instructions are defined in `overrides.lua`.
-overrides act as extensions to the Preproc class;
-they are passed Preproc's `self`.
+overrides act as extensions to the Expander class;
+they are passed Expander's `self`.
 this keeps boilerplate out of `overrides.lua`,
 but makes our own file more of a mess,
 with more dependencies for arbitrary token/statement handling.
 
 ### room for improvment
 
-as noted above, the name is a bit of a misnomer,
-so this class should probably be split in two.
-
-pass 3 (expressions) should be an attempt to evaluate constants,
-and parsing should be moved to be part of pass 1.
-
-pass 4 (expansion) is really messy.
-
-looking back, the `new_statements` ordeal
-only seems necessary for the (poor) error handling it provides.
-
-the handling of statement tables could be made better.
+expansion is kinda messy.
 
 ## Expression
 
@@ -301,18 +297,20 @@ since Token objects contain all the data necessary to do so.
 
 implements some error-checking for statements.
 
+### TokenIter
+
+used by Collector to iterate over statements, validating them.
+
 ### Reader
 
-inherited by stuff
+used by Expander and Dumper to validate tokens in statements.
 
-### Muncher
-
-inherited by stuff
+currently, this is the only class requiring inheritance.
 
 ### room for improvement
 
-Reader and Muncher classes shouldn't even be necessary;
-they could at least be reduced into one.
+Reader should probably be split into another class,
+instead of inherited.
 
 ## etc.
 
