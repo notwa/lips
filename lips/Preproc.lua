@@ -1,3 +1,4 @@
+local abs = math.abs
 local insert = table.insert
 
 local path = string.gsub(..., "[^.]+$", "")
@@ -6,20 +7,9 @@ local overrides = require(path.."overrides")
 local Statement = require(path.."Statement")
 local Reader = require(path.."Reader")
 local Expression = require(path.."Expression")
+local util = require(path.."util")
 
-local abs = math.abs
-
-local function signs(s)
-    local start, end_ = s:find('[+-]+')
-    if start ~= 1 then
-        return 0
-    end
-    if s:sub(1, 1) == '+' then
-        return end_
-    elseif s:sub(1, 1) == '-' then
-        return -end_
-    end
-end
+local signs = util.signs
 
 local Preproc = Reader:extend()
 function Preproc:init(options)

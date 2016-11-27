@@ -208,7 +208,6 @@ function Collector:collect(tokens, fn)
     end
 
     for t in I do
-        print(t.tt, t.tok)
         if t.tt == 'EOF' then
             -- noop
         elseif t.tt == 'EOL' then
