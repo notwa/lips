@@ -184,14 +184,13 @@ that Dumper can later understand.
 
 the `:check` method
 asserts that a token exists and is of a given type (`tt`).
-it will defer to the `:lookup` method if the token type mismatches,
-which isn't guaranteed to help.
 
-preprocessing is split into three passes:
+preprocessing is split into two passes:
 
 ### pass 1
 
-resolves variables by substitution, parses expressions,
+resolves variables by substitution,
+parses and evaluates expressions,
 and collects relative labels.
 
 this pass starts by creating a new, empty table of statements to fill.
@@ -200,11 +199,11 @@ statements are passed through, possibly modified, or read and left-out.
 the reason for the copying is that taking indexes into an array (statements)
 that you're removing elements from is A Bad Idea.
 
-variable-declaring statements (`!VAR`) are read to a dictionary table,
-for future replacement of their keys with values by the `:lookup` method.
+all expression tokens are evaluated,
+and all variable tokens are substituted.
 
-note that the variable-parsing code itself calls `:lookup` through `:check`,
-so new variables can simply copy the values of previous variables.
+variable-declaring statements (`!VAR`) are read to a dictionary table
+for future substitution of their keys with values.
 
 labels (`!LABEL`) are checked for RELLABEL tokens to collect
 for later replacement in pass 2.
@@ -213,34 +212,17 @@ appended and prepended respectively.
 the collection tables are arrays of tables containing the keys
 `index` and `name`.
 
-every statement that isn't eaten has its tokens looked-up by the
-`:lookup` method. at this state, it just handles variable substitution.
-
 ### pass 2
 
 resolves relative labels by substitution.
 
-this code enables `self.do_labels` which tells `:lookup` to start
-handling relative labels as well, now that they've all been collected.
-
-`:lookup` is run on every token of every statement.
-
 the appending/prepending done in pass 1 ensures
 that the appropriate relative labels are found in the proper order.
 
-### pass 3
-
-attempts to parse and evaluate constant expressions.
-
 ### room for improvment
-
-pass 3 (expressions) should be an attempt to evaluate constants,
-and parsing should be moved to be part of pass 1.
 
 looking back, the `new_statements` ordeal
 only seems necessary for the (poor) error handling it provides.
-
-the handling of statement tables could be made better.
 
 ## Expander
 
