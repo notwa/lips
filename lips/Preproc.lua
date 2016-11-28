@@ -96,19 +96,10 @@ function Preproc:resolve(t)
 end
 
 function Preproc:check(s, i, tt)
-    s = s or self.s
-    i = i or self.i
     local t = s[i]
     if t == nil then
         local err = ("expected another argument for %s at position %i"):format(self.s.type, self.i)
         self:error(err)
-    end
-
-    self.fn = t.fn
-    self.line = t.line
-
-    if t.tt ~= tt then
-        self:lookup(t)
     end
 
     if t.tt ~= tt then
@@ -118,14 +109,30 @@ function Preproc:check(s, i, tt)
     return t.tok
 end
 
+function Preproc:evaluate(t)
+    if t.tt == 'EXPR' then
+        local result, err = self.expr:eval(t.tok)
+        if err then
+            self:error('failed to evaulate ('..t.tok..')', err)
+        end
+        t.tt = 'NUM'
+        t.tok = result
+    end
+    self:lookup(t)
+end
+
 function Preproc:process(statements)
     self.variables = {}
     self.plus_labels = {} -- constructed forwards
     self.minus_labels = {} -- constructed backwards
+    self.expr = Expression(self.variables)
 
     -- first pass: resolve variables and collect relative labels
     local new_statements = {}
     for s in self:iter(statements) do
+        for j, t in ipairs(s) do
+            self:evaluate(t)
+        end
         if s.type == '!VAR' then
             local a = self:check(s, 1, 'VAR')
             local b = self:check(s, 2, 'NUM')
@@ -148,9 +155,6 @@ function Preproc:process(statements)
             end
             insert(new_statements, s)
         else
-            for j, t in ipairs(s) do
-                self:lookup(t)
-            end
             insert(new_statements, s)
         end
     end
@@ -159,21 +163,6 @@ function Preproc:process(statements)
     for s in self:iter(new_statements) do
         for j, t in ipairs(s) do
             self:resolve(t)
-        end
-    end
-
-    -- third pass: evaluate constant expressions
-    for s in self:iter(new_statements) do
-        for j, t in ipairs(s) do
-            if t.tt == 'EXPR' then
-                local expr = Expression()
-                local result, err = expr:eval(t.tok)
-                if err then
-                    self:error('failed to evaulate ('..t.tok..')', err)
-                end
-                t.tt = 'NUM'
-                t.tok = result
-            end
         end
     end
 
