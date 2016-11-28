@@ -406,6 +406,13 @@ function Lexer:lex(_yield)
             end
             self:nextc()
             yield('VAR', buff)
+            self:read_spaces()
+            if self.chr == '@' then
+                -- old syntax; nothing to do here
+            else
+                buff = self:read_chars('[^\n]')
+                yield('EXPR', buff)
+            end
         elseif self.chr == ']' then
             self:error('unmatched closing bracket')
         elseif self.chr == '(' then
