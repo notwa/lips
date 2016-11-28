@@ -393,10 +393,10 @@ function Lexer:lex(_yield)
             yield('SEP', ',')
         elseif self.chr == '[' then
             self:nextc()
-            local buff = self:read_chars('[%w_]')
-            if buff:match('^%d') then
+            if self.chr:find('%d') then
                 self:error('variable names cannot begin with a number')
             end
+            local buff = self:read_chars('[%w_]')
             if self.chr ~= ']' then
                 self:error('invalid variable name')
             end
@@ -444,6 +444,9 @@ function Lexer:lex(_yield)
             self:lex_string(yield)
         elseif self.chr == '@' then
             self:nextc()
+            if self.chr:find('%d') then
+                self:error('variable names cannot begin with a number')
+            end
             local buff = self:read_chars('[%w_]')
             yield('VARSYM', buff)
         elseif self.chr == '%' then
