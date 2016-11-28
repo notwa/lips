@@ -1,4 +1,5 @@
 local abs = math.abs
+local format = string.format
 local insert = table.insert
 
 local path = string.gsub(..., "[^.]+$", "")
@@ -11,6 +12,13 @@ local signs = util.signs
 local Preproc = Base:extend()
 function Preproc:init(options)
     self.options = options or {}
+end
+
+function Preproc:error(msg, got)
+    if got ~= nil then
+        msg = msg..', got '..tostring(got)
+    end
+    error(format('%s:%d: Error: %s', self.fn, self.line, msg), 2)
 end
 
 function Preproc:iter(statements)
