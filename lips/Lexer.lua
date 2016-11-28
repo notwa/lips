@@ -329,6 +329,7 @@ function Lexer:lex_include_binary(_yield)
     local data = util.readfile(fn, true)
     _yield('DIR', 'BIN', fn, 0)
     _yield('STRING', data, fn, 0)
+    _yield('EOF', self.EOF, self.fn, self.line)
 end
 
 function Lexer:lex_expression(yield)
