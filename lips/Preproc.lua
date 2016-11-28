@@ -118,7 +118,6 @@ function Preproc:process(statements)
     -- first pass: resolve variables and collect relative labels
     local new_statements = {}
     for s in self:iter(statements) do
-        -- directive, label, etc.
         if s.type == '!VAR' then
             local a = self:check(s, 1, 'VAR')
             local b = self:check(s, 2, 'NUM')
@@ -141,7 +140,6 @@ function Preproc:process(statements)
             end
             insert(new_statements, s)
         else
-            -- regular instruction
             for j, t in ipairs(s) do
                 self:lookup(t)
             end
