@@ -394,6 +394,9 @@ function Lexer:lex(_yield)
         elseif self.chr == '[' then
             self:nextc()
             local buff = self:read_chars('[%w_]')
+            if buff:match('^%d') then
+                self:error('variable names cannot begin with a number')
+            end
             if self.chr ~= ']' then
                 self:error('invalid variable name')
             end
