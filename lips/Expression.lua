@@ -154,9 +154,12 @@ function Expression:lex1(str, tokens)
                 num = tonumber(considered, 2)
             elseif consider('0x[0-9A-Fa-f]+') then
                 num = tonumber(considered, 16)
-            elseif consider('0[0-7]+') then
+            elseif consider('0[0-9]+') then
+                if considered:match('[89]') then
+                    return "bad octal number: "..considered..here
+                end
                 num = tonumber(considered, 8)
-            elseif consider('[1-9][0-9]*') then
+            elseif consider('[0-9]*') then
                 num = tonumber(considered)
             end
             if num == nil then
