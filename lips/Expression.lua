@@ -4,6 +4,9 @@ local path = string.gsub(..., "[^.]+$", "")
 local Base = require(path.."Base")
 
 local Expression = Base:extend()
+function Expression:init(variables)
+    self.variables = variables or {}
+end
 
 Expression.precedence = {
     -- python-ish precedence
@@ -80,6 +83,7 @@ Expression.binary_ops = {
 local operators = {}
 local operators_maxlen = 0
 do
+    -- reorder operators so we can match the longest strings first
     for k, v in pairs(Expression.precedence) do
         if operators[#k] == nil then
             operators[#k] = {}
@@ -168,6 +172,13 @@ function Expression:lex1(str, tokens)
             consume(#considered)
         elseif consider_operator() then
             insert(tokens, {type='operator', value=considered})
+            consume(#considered)
+        elseif consider('%w+') then
+            local num = self.variables[considered]
+            if num == nil then
+                return 'undefined variable "'..considered..'"'
+            end
+            insert(tokens, {type='number', value=num})
             consume(#considered)
         else
             local chr = rest:sub(1, 1)
