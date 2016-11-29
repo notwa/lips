@@ -1,4 +1,5 @@
 unify/optimize ascii/asciiz/byte/halfword/word into BIN directives
+also lex strings to binary strings, why not
 
 directive aliases, are these right?
     DB = 'BYTE',

@@ -297,11 +297,19 @@ function Lexer:lex_filename(_yield)
     end)
     _yield('STRING', fn, self.fn, self.line)
 
-    if self.chr ~= '\n' then
+    self:read_spaces()
+    if self.chr == ';' or self.chrchr == '//' then
+        self:skip_to_EOL()
+    end
+    if self.chr == '\n' then
+        _yield('EOL', '\n', self.fn, self.line)
+        self:nextc()
+    elseif self.ord == self.EOF then
+        _yield('EOL', '\n', self.fn, self.line)
+        self.was_EOL = true
+    else
         self:error('expected EOL after filename')
     end
-    _yield('EOL', '\n', self.fn, self.line)
-    self:nextc()
 
     return fn
 end
