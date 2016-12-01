@@ -174,9 +174,9 @@ function Expression:lex1(str, tokens)
                     return "bad octal number: "..considered..here
                 end
                 num = tonumber(considered:sub(2), 8)
-            elseif consider('#[0-9]*') then
+            elseif consider('#[0-9]+') then
                 num = tonumber(considered:sub(2))
-            elseif consider('[0-9]*') then
+            elseif consider('[0-9]+') then
                 num = tonumber(considered)
             end
             if num == nil then
@@ -193,7 +193,7 @@ function Expression:lex1(str, tokens)
         elseif consider_operator() then
             insert(tokens, {type='operator', value=considered})
             consume(#considered)
-        elseif consider('%w+') then
+        elseif consider('[%w_]+') then
             local num = self.variables[considered]
             if num == nil then
                 return 'undefined variable "'..considered..'"'
