@@ -1,7 +1,15 @@
 unify/optimize ascii/asciiz/byte/halfword/word into BIN directives
 also lex strings to binary strings, why not
 
+more useful string escapes e.g. \x
+
 lex expressions in Lexer instead of its own separate lexer
+
+;pseudo-instr for offsets not within 0x8000 range?
+addiu   at, t0, 0x7FFF
+sb      t1, 0x62FE(at)
+;versus
+sb      t1, r0+0xE2FD(t0)
 
 directive aliases, are these right?
     DB = 'BYTE',
@@ -15,6 +23,7 @@ implement push/pop/jpop as macros
 be able to point to specific args of push/pop using variables
 add file-reading directives (e.g. for automatic hook injection macros)
 allow generation of shared object files (zelda overlays specifically)
+http://wiki.cloudmodding.com/oot/Overlays#Relocation_Entry_Format
 
 don't require colons for +/- labels (this shouldn't break anything right?)
 

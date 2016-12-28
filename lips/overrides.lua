@@ -4,6 +4,13 @@ local unpack = rawget(_G, 'unpack') or table.unpack
 local path = string.gsub(..., "[^.]+$", "")
 local data = require(path.."data")
 
+local fpu_tob = {
+    LDC1=true,
+    LWC1=true,
+    SDC1=true,
+    SWC1=true,
+}
+
 local function name_pop(name, character)
     if name:sub(#name) == character then
         return name:sub(1, #name - 1), character
@@ -51,7 +58,7 @@ local overrides = {}
 
 local function tob_override(self, name)
     -- handle all the addressing modes for lw/sw-like instructions
-    local dest = self:pop('CPU')
+    local dest = fpu_tob[name] and self:pop('FPU') or self:pop('CPU')
     local offset, base
     if self:peek('DEREF') then
         offset = 0
@@ -94,7 +101,7 @@ local function tob_override(self, name)
 end
 
 for k, v in pairs(data.instructions) do
-    if v[2] == 'tob' then
+    if v[2] == 'tob' or v[2] == 'Tob' then
         overrides[k] = tob_override
     end
 end
