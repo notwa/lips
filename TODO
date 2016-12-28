@@ -16,8 +16,6 @@ directive aliases, are these right?
 
 add basic command-line interface (patch.lua)
 
-add a gameshark writer
-
 improve writer performance (just copypaste what you did in patch.lua)
 
 allow generation of shared object files (zelda overlays specifically)
