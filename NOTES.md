@@ -94,8 +94,8 @@ it might work without being in a dedicated directory too
 other than that there's not a lot to say.
 i've intentionally written this file as stripped down as possible.
 
-i've gone for a one-class-per-file style,
-so `file` and `class` will often be synonyms in the following text.
+i've gone for a one-class-per-file structure,
+so `file` and `class` can be synonyms in the following text.
 
 ### room for improvement
 
@@ -175,12 +175,24 @@ there's a couple TODOs and FIXMEs in here.
 
 ## Collector
 
-TODO
+collects tokens into statements.
+statements are basically our form of an abstract syntax tree,
+except statements don't need the depth of a tree (outside of expressions)
+so they're completely flat.
+
+most of this is just validation of the lexed tokens.
+
+### room for improvement
+
+the Collector currently squeezes many DATA statements into few
+through the `:push_data` method.
+as noted in the TODOs, this process should be done in the lexer,
+to greatly reduce creation of tables, thus greatly improving performance.
 
 ## Preproc
 
 transforms complex statements into simpler statements
-that Dumper can later understand.
+that, after expanding with Expander, Dumper can then understand.
 
 the `:check` method
 asserts that a token exists and is of a given type (`tt`).
@@ -222,7 +234,7 @@ that the appropriate relative labels are found in the proper order.
 ### room for improvment
 
 looking back, the `new_statements` ordeal
-only seems necessary for the (poor) error handling it provides.
+only seems necessary for the (poor) error-handling it provides.
 
 ## Expander
 
@@ -255,15 +267,26 @@ bitwise operators need to be implemented.
 possibly with LuaJIT and a Lua 5.1 fallback.
 maybe that should be its own file?
 
-i might want to consider generating a abstract syntax tree,
-instead of reverse polish notation,
-so that i can handle short-circuiting `&&` and `||` operators,
-among other things, like evaluating stuff
-in logical order instead of right-to-left for everything.
+in the long term,
+i'll need to move lexing expressions to the main Lexer class,
+and do proper parsing to an AST in Collector.
+this will unify the syntax,
+and allow for inline expressions, e.g:
+`lw s0, 5*4(sp)`.
 
 ## Dumper
 
-TODO
+completes the assembler with the incredibly boring task
+of translating strings to numbers.
+
+most directives are handled here in `:load`,
+simplified to raw !DATA, !BIN and !ORG directives.
+
+### room for improvement
+
+the `:load` method is *huge*
+and desperately needs to be refactored into smaller methods,
+perhaps even of a different class.
 
 ## helper classes
 

@@ -3,8 +3,6 @@ also lex strings to binary strings, why not
 
 more useful string escapes e.g. \x
 
-lex expressions in Lexer instead of its own separate lexer
-
 ;pseudo-instr for offsets not within 0x8000 range?
 addiu   at, t0, 0x7FFF
 sb      t1, 0x62FE(at)
@@ -18,24 +16,26 @@ directive aliases, are these right?
 
 add basic command-line interface (patch.lua)
 
-add macros
-implement push/pop/jpop as macros
-be able to point to specific args of push/pop using variables
-add file-reading directives (e.g. for automatic hook injection macros)
-allow generation of shared object files (zelda overlays specifically)
-http://wiki.cloudmodding.com/oot/Overlays#Relocation_Entry_Format
-
-don't require colons for +/- labels (this shouldn't break anything right?)
-
-write tests for everything (try to focus on code paths and edge cases)
-test unary tokens in particular
-
-improve parser terminology
-
 add a gameshark writer
 
 improve writer performance (just copypaste what you did in patch.lua)
 
-long term: add delay slot warnings
+allow generation of shared object files (zelda overlays specifically)
+ -> http://wiki.cloudmodding.com/oot/Overlays#Relocation_Entry_Format
 
-externally document more stuff like syntax
+macros:
+    add 'em
+    implement push/pop/jpop as macros
+    be able to point to specific args of push/pop using variables
+
+procrastinating the heck over:
+    lex expressions in Lexer instead of its own separate lexer
+    write tests for everything (try to focus on code paths and edge cases)
+    make breaking changes to syntax for the sake of macros, expressions etc.
+    (and keep a branch with the old syntax for good measure, feature-frozen)
+
+low priority:
+    improve parser terminology
+    add delay slot warnings
+    externally document more stuff like syntax
+    add file-reading directives (e.g. for automatic hook injection macros)
