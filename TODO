@@ -1,3 +1,7 @@
+what i should probably do is add 'hooks' just before newlines have been yielded
+so you can look at the previous line and say hey it's an include
+let's start lexing that instead
+
 unify/optimize ascii/asciiz/byte/halfword/word into BIN directives
 also lex strings to binary strings, why not
 

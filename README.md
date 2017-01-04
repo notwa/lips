@@ -277,7 +277,8 @@ in the directory of the file using the directive.
 
 * `.ascii "some\ntext\0"`  
 writes a string using its characters' ASCII values.
-a few escapes are currently supported: `\ " a b f n r t v 0`
+a few escapes are currently supported: `\ " a b e f n r t v 0`,
+also `\xXX` where XX is a byte given in hexadecimal.
 
 * `.asciiz "some\ntext"`  
 same as ascii, but with a null byte added to the end.
