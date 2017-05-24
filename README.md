@@ -180,7 +180,7 @@ some of the nuances of the processor.
 [basstables]: https://github.com/ARM9/bass/tree/master/bass/arch/table/mipseb
 [mipsiv]: http://www.cs.cmu.edu/afs/cs/academic/class/15740-f97/public/doc/mips-isa.pdf
 [mips64]: http://scc.ustc.edu.cn/zlsc/lxwycj/200910/W020100308600769158777.pdf
-[r4300i]: http://www.futuretech.blinkenlights.nl/R4300_datasheet.Rev0.3.pdf
+[r4300i]: http://datasheets.chipdb.org/MIPS/R4300i_datasheet.pdf
 
 ### Unimplemented Instructions
 
