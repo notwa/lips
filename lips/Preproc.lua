@@ -4,7 +4,6 @@ local insert = table.insert
 
 local path = string.gsub(..., "[^.]+$", "")
 local Base = require(path.."Base")
-local Expression = require(path.."Expression")
 local util = require(path.."util")
 
 local signs = util.signs
@@ -110,14 +109,6 @@ function Preproc:check(s, i, tt)
 end
 
 function Preproc:evaluate(t)
-    if t.tt == 'EXPR' then
-        local result, err = self.expr:eval(t.tok)
-        if err then
-            self:error('failed to evaulate ('..t.tok..')', err)
-        end
-        t.tt = 'NUM'
-        t.tok = result
-    end
     self:lookup(t)
 end
 
@@ -125,7 +116,6 @@ function Preproc:process(statements)
     self.variables = {}
     self.plus_labels = {} -- constructed forwards
     self.minus_labels = {} -- constructed backwards
-    self.expr = Expression(self.variables)
 
     -- first pass: resolve variables and collect relative labels
     local new_statements = {}

@@ -244,10 +244,6 @@ function Dumper:load(statements)
         self.fn = s.fn
         self.line = s.line
         if s.type:sub(1, 1) == '!' then
-            if s[1] and s[1].tt == 'EXPR' then
-                self:error('unevaluated expression')
-            end
-
             if s.type == '!LABEL' then
                 self.labels[s[1].tok] = self:pc()
             elseif s.type == '!DATA' then

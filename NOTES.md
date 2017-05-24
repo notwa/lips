@@ -63,12 +63,11 @@ currently there is:
     dumps the statements table after tokenizing and collecting into statements.
     this is after UNARY and RELLABELSYM tokens have been disambiguated.
 .debug_pre (default false)
-    dumps statements after basic preprocessing:
-    variable substitution, expression parsing,
-    relative label substitution, etc.
+    dumps statements after basic preprocessing,
+    e.g. variable substitution, relative label substitution, etc.
 .debug_post (default false)
-    dumps statements after expanding preprocessor commands:
-    pseudo-instructions, expression evaluation, etc.
+    dumps statements after expanding preprocessor commands,
+    e.g. pseudo-instructions.
 .debug_asm (default false)
     is arguably the least useful of states to dump in.
     this will dump statements after being reduced to
@@ -155,9 +154,6 @@ the appropriate files are placed and tokenized inline, not unlike in C.
 
 the `HEX` directive is its own mini-language and thus has its own mini-lexer.
 
-expressions are not parsed nor lexed here.
-they are simply extracted as whole strings for later processing.
-
 the `yield` closure wraps around the `_yield` function argument
 to pass error-handling metadata: the current filename and line number.
 
@@ -177,7 +173,7 @@ there's a couple TODOs and FIXMEs in here.
 
 collects tokens into statements.
 statements are basically our form of an abstract syntax tree,
-except statements don't need the depth of a tree (outside of expressions)
+except statements don't need the depth of a tree
 so they're completely flat.
 
 most of this is just validation of the lexed tokens.
@@ -202,7 +198,6 @@ preprocessing is split into two passes:
 ### pass 1
 
 resolves variables by substitution,
-parses and evaluates expressions,
 and collects relative labels.
 
 this pass starts by creating a new, empty table of statements to fill.
@@ -211,8 +206,7 @@ statements are passed through, possibly modified, or read and left-out.
 the reason for the copying is that taking indexes into an array (statements)
 that you're removing elements from is A Bad Idea.
 
-all expression tokens are evaluated,
-and all variable tokens are substituted.
+all variable tokens are substituted.
 
 variable-declaring statements (`!VAR`) are read to a dictionary table
 for future substitution of their keys with values.
@@ -253,26 +247,7 @@ expansion is kinda messy.
 
 ## Expression
 
-handles parsing and evaluation of simple (usually mathematical) expressions.
-
-this class is actually completely independent of the rest of lips,
-besides the requirement of the `Base` class, which isn't specific to lips.
-
-### room for improvement
-
-right now, this is just a quick and dirty port of some
-C++ code i wrote a while back. so basically, everything could be improved.
-
-bitwise operators need to be implemented.
-possibly with LuaJIT and a Lua 5.1 fallback.
-maybe that should be its own file?
-
-in the long term,
-i'll need to move lexing expressions to the main Lexer class,
-and do proper parsing to an AST in Collector.
-this will unify the syntax,
-and allow for inline expressions, e.g:
-`lw s0, 5*4(sp)`.
+expressions are not implemented in this branch.
 
 ## Dumper
 

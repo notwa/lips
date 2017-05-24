@@ -18,7 +18,6 @@ end
 
 TokenIter.arg_types = {
     NUM = true,
-    EXPR = true,
     REG = true,
     VARSYM = true,
     LABELSYM = true,
@@ -157,7 +156,6 @@ end
 function TokenIter:const(relative, no_label)
     local good = {
         NUM = true,
-        EXPR = true,
         VARSYM = true,
         LABELSYM = true,
     }

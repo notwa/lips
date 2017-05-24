@@ -20,22 +20,10 @@ add basic command-line interface (patch.lua)
 
 improve writer performance (just copypaste what you did in patch.lua)
 
-allow generation of shared object files (zelda overlays specifically)
- -> http://wiki.cloudmodding.com/oot/Overlays#Relocation_Entry_Format
-
-macros:
-    add 'em
-    implement push/pop/jpop as macros
-    be able to point to specific args of push/pop using variables
-
 procrastinating the heck over:
-    lex expressions in Lexer instead of its own separate lexer
     write tests for everything (try to focus on code paths and edge cases)
-    make breaking changes to syntax for the sake of macros, expressions etc.
-    (and keep a branch with the old syntax for good measure, feature-frozen)
 
 low priority:
     improve parser terminology
     add delay slot warnings
     externally document more stuff like syntax
-    add file-reading directives (e.g. for automatic hook injection macros)

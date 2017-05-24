@@ -341,38 +341,6 @@ function Lexer:lex_include_binary(_yield)
     _yield('EOF', self.EOF, self.fn, self.line)
 end
 
-function Lexer:lex_expression(yield)
-    if self.chr ~= '(' then
-        self:error('expected opening parenthesis for expression')
-    end
-    self:nextc()
-
-    local expr = ""
-    local depth = 1
-    while true do
-        if self.chr == '\n' then
-            self:error('unexpected newline; incomplete expression')
-        elseif self.ord == self.EOF then
-            self:nextc()
-            self:error('unexpected EOF; incomplete expression')
-        elseif self.chr == '(' then
-            depth = depth + 1
-            self:nextc()
-            expr = expr..'('
-        elseif self.chr == ')' then
-            depth = depth - 1
-            self:nextc()
-            if depth == 0 then break end
-            expr = expr..')'
-        else
-            expr = expr..self.chr
-            self:nextc()
-        end
-    end
-
-    yield('EXPR', expr)
-end
-
 function Lexer:lex(_yield)
     local function yield(tt, tok)
         return _yield(tt, tok, self.fn, self.line)
@@ -416,12 +384,6 @@ function Lexer:lex(_yield)
             self:nextc()
             yield('VAR', buff)
             self:read_spaces()
-            if self.chr == '@' then
-                -- old syntax; nothing to do here
-            else
-                buff = self:read_chars('[^;\n]')
-                yield('EXPR', buff)
-            end
         elseif self.chr == ']' then
             self:error('unmatched closing bracket')
         elseif self.chr == '(' then
@@ -467,8 +429,6 @@ function Lexer:lex(_yield)
                 end
             elseif self.chr:find('[01]') then
                 yield('NUM', self:read_binary())
-            elseif self.chr == '(' then
-                self:lex_expression(yield)
             else
                 self:error('unknown % syntax')
             end
