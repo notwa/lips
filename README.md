@@ -6,9 +6,37 @@ This is not a 'true' assembler; it won't produce executable binary files.
 This was intended to assist in hacking N64 games.
 It does little more than output hex.
 
-Not for production.
-Much of the code and syntax is untested and likely to change.
-Even this README is incomplete.
+## Expressionless Branch
+
+This branch contains a version of lips with expressions removed.
+It exists to become more stable than the master branch,
+while maintaining compatibility with old lips assembly files.
+
+### What?
+
+Expressions were evaluatable strings that allowed you
+to perform basic arithmetic with limited support for variables.
+They allowed things like this:
+
+```
+[my_important_address]: 0x80001234
+[actors]: my_important_address + 0x1080
+[actor_size]: 0x20
+    lw      t0, %(actors + 4 * actor_size)
+```
+
+Pretty useful, right? Unfortunately, they were poorly integrated into lips,
+and have been removed.
+
+Expressions will remain in the master branch.
+However, I plan on *(eventually)* refactoring the code of master branch,
+and changing the syntax of lips to better accomodate expressions.
+
+This expressionless branch will favor
+cleanliness, stability, and compatibility
+over the feature-creep of the master branch.
+Existing code (without expressions) will continue to assemble
+using this version of lips.
 
 ## Usage
 
@@ -48,7 +76,7 @@ written for the Nintendo 64 Zelda games.
 
 ## Syntax
 
-lips uses a derivative of [CajeASM's][caje] syntax.
+Expressionless lips derives from [CajeASM's][caje] syntax.
 It takes a couple of notes from other assemblers as well.
 
 [caje]: https://github.com/Tarek701/CajeASM/
@@ -67,8 +95,7 @@ A run-down of various syntax elements:
 
 ; whitespace is optional.
 li a0,@myconst
-; commas can be optional too,
-; but this feature will likely be removed in the future.
+; commas can be optional too.
 li a0 @myconst
 ; instructions may end in an extra comma;
 ; this may make mass-entry or generation of instructions easier.
@@ -80,8 +107,7 @@ li  a0, @my_const,
 ; however, note that the 'x' in "0x" must be lowercase.
 ; the same applies for 0b and 0o for binary and octal, respectively.
 
-; coprocessor 0 registers are case-insensitive as well,
-; though this may change in the future.
+; coprocessor 0 registers are case-insensitive as well.
     mfc0    a1, CouNT
 
 ; labels are defined with a colon, and referenced without a prefix, as such:
@@ -158,12 +184,12 @@ some of the nuances of the processor.
 
 ### Unimplemented Instructions
 
+*None?*
 As far as I know, all native R4300i instructions have been implemented.
-Whether or not they output the proper machine code is another thing.
 
 ### Unimplemented Pseudo-Instructions
 
-* MUL, DIV, REM
+* two-argument variants of MUL, DIV, REM
 
 * many Set [Condition] pseudo-instructions
 
@@ -283,9 +309,9 @@ also `\xXX` where XX is a byte given in hexadecimal.
 * `.asciiz "some\ntext"`  
 same as ascii, but with a null byte added to the end.
 
-### Unimplemented
+### Unimplemented Directives
 
 * `.float {numbers..}`  
 `.double {numbers..}`  
 writes a list of 32-bit/64-bit floating point numbers until end-of-line.
-this may not get implemented in vanilla Lua due to a lack of aliasing.
+this may not get implemented in vanilla Lua due to a lack of type-punning.
